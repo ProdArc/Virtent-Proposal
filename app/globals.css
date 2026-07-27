@@ -47,7 +47,7 @@ body {
   .hero-video {
     width: 96vw !important;
     left: 50% !important;
-    top: 76% !important;
+    top: 68% !important;
     transform: translate(-50%, -50%) !important;
   }
 }
