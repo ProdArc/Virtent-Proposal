@@ -171,7 +171,7 @@ export const content = {
   solucao: {
     headline: "Sua operação, sem hora pra parar.",
     description:
-      "A Virtent é uma operação virtual construída sobre o WhatsApp (API oficial) que atua como uma extensão da sua equipe, cobrindo o horário, o volume e a memória que nenhuma equipe humana sustenta sozinha, do primeiro contato à recorrência. O resultado cresce. do primeiro contato à recorrência. A equipe não precisa aumentar..",
+      "A Virtent é uma operação virtual construída sobre o WhatsApp (API oficial) que atua como uma extensão da sua equipe, cobrindo o horário. O resultado cresce. do primeiro contato à recorrência. A equipe não precisa aumentar..",
     features: [
       {
         icon: "ChatsCircle",
