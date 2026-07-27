@@ -31,7 +31,10 @@ export default function HeroSection() {
     if (video.readyState >= 1) applyDuration(video.duration);
     video.addEventListener("loadedmetadata", () => applyDuration(video.duration));
 
-    function onScroll() {
+    let rafId = 0;
+
+    function update() {
+      rafId = 0;
       const dur = durationRef.current;
       if (!dur) return;
 
@@ -57,8 +60,20 @@ export default function HeroSection() {
       }
     }
 
+    // Agrupa os updates no frame de render (no máximo 1x por frame) em vez de
+    // rodar a cada evento nativo de scroll, que em alguns WebViews restritos
+    // (navegador embutido do WhatsApp etc.) dispara com uma frequência bem
+    // maior que 60fps e sobrecarrega o decodificador de vídeo.
+    function onScroll() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(update);
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [reduce]);
 
   function stagger(i: number) {
@@ -118,6 +133,15 @@ export default function HeroSection() {
             transform: "translate(-50%, -50%)",
             width: "55vw",
             height: "auto",
+            // Fundo permanente com o poster — não é só o placeholder inicial.
+            // Alguns WebViews restritos (navegador embutido do WhatsApp,
+            // Instagram etc.) descartam o frame decodificado do vídeo durante
+            // o scrubbing contínuo do scroll. Com isso como background real,
+            // sempre tem algo desenhado ali, mesmo se o <video> parar de
+            // pintar frames no meio do scroll.
+            backgroundImage: "url(/video/hero-poster.jpg)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
             maskImage:
               "linear-gradient(to right, transparent 0%, #000 4%, #000 96%, transparent 100%), " +
               "linear-gradient(to bottom, transparent 0%, #000 4%, #000 96%, transparent 100%)",
