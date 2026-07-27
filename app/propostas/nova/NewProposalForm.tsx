@@ -24,7 +24,14 @@ export function NewProposalForm() {
   const [copied, setCopied] = useState(false);
 
   if (state.success) {
-    const link = `${typeof window !== "undefined" ? window.location.origin : ""}/p/${state.success.slug}`;
+    // Nunca usar window.location.origin sozinho aqui: se alguém abrir essa
+    // ferramenta a partir de uma URL de deployment específico da Vercel (não
+    // o domínio de produção), o link copiado sairia com aquele endereço
+    // temporário — que exige login na Vercel pra qualquer visitante externo.
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    const siteUrl = configuredSiteUrl || (typeof window !== "undefined" ? window.location.origin : "");
+    const proposalPath = `/p/${state.success.slug}`;
+    const link = `${siteUrl}${proposalPath}`;
 
     return (
       <div className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8">
@@ -36,9 +43,17 @@ export function NewProposalForm() {
         </p>
         <div className="flex items-center gap-2 rounded-lg border border-[#E4E4E7] bg-[#F9FBF8] px-3 py-2.5 mb-4">
           <code className="flex-1 text-xs sm:text-sm text-[#18181B] font-[family-name:var(--font-geist-mono)] break-all">
-            /p/{state.success.slug}
+            {link || proposalPath}
           </code>
         </div>
+        {!configuredSiteUrl && (
+          <p className="text-xs text-[#B45309] bg-[#FFF7ED] border border-[#FDBA74]/40 rounded-lg px-3 py-2 mb-4">
+            NEXT_PUBLIC_SITE_URL não está configurada — o link acima usa o endereço desta aba.
+            Se você abriu essa ferramenta a partir de uma URL de deployment da Vercel (com um
+            hash tipo <code>-1uqnbo8f9-</code> no meio), o link vai exigir login da Vercel pra
+            quem receber. Configure a variável pra sempre gerar o domínio de produção certo.
+          </p>
+        )}
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
@@ -51,13 +66,14 @@ export function NewProposalForm() {
           >
             {copied ? "Copiado!" : "Copiar link"}
           </button>
-          <Link
-            href={`/p/${state.success.slug}`}
+          <a
+            href={link || proposalPath}
             target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
           >
             Abrir proposta
-          </Link>
+          </a>
           <Link
             href="/propostas"
             className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-lg text-[#71717A] hover:text-[#18181B] transition-colors"
