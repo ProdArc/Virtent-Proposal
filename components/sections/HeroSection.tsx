@@ -106,6 +106,7 @@ export default function HeroSection() {
         <video
           ref={videoRef}
           src="/video/hero.mp4"
+          poster="/video/hero-poster.jpg"
           muted
           playsInline
           preload="auto"
