@@ -1,26 +1,226 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-brand: #065F46;
+  --color-brand-hover: #047857;
+  --color-brand-light: #ECFDF5;
+  --color-brand-vivid: #10B981;
+  --color-surface: #F9FBF8;
+  --color-surface-alt: #F0F5F3;
+  --color-ink: #18181B;
+  --color-muted: #52525B;
+  --color-subtle: #A1A1AA;
+  --color-border: #E4E4E7;
+  --color-accent: #F2A93B;
+  --color-accent-ink: #B45309;
+  --color-petrol: #08211B;
+  --color-petrol-raised: #0E2C23;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #F9FBF8;
+  --foreground: #18181B;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Hero video — responsive positioning ─────────────────────── */
+@media (max-width: 767px) {
+  .hero-video {
+    width: 96vw !important;
+    left: 50% !important;
+    top: 76% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-video {
+    width: 80vw !important;
+    left: 60% !important;
+  }
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Scrollbar — Apple style ─────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+*:hover {
+  scrollbar-color: rgba(6, 95, 70, 0.28) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 100px;
+  transition: background 0.3s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(6, 95, 70, 0.28);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 95, 70, 0.5);
+}
+/* ────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@keyframes shine {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* ── Card hover — elevation + scale, pointer devices only ────────── */
+.card-hover {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-hover:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 16px 32px -12px rgba(6, 95, 70, 0.22);
+  }
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Animated underline — used on nav / footer links ─────────────── */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 0;
+  height: 1px;
+  background: currentColor;
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link-underline:hover::after {
+    width: 100%;
+  }
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Resultados — shine accent on the hero metric number ─────────── */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.metric-shine {
+  background-image: linear-gradient(90deg, #10b981 15%, #F2A93B 50%, #10b981 85%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 6s linear infinite;
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Ambient glow — hero + dark sections ──────────────────────── */
+.ambient-glow {
+  position: absolute;
+  pointer-events: none;
+  animation: pulseGlow 7s ease-in-out infinite;
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Primary CTA — periodic amber shine sweep (bg set per-button) ──── */
+.cta-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(115deg, transparent, rgba(242, 169, 59, 0.65), transparent);
+  transform: translateX(-160%) skewX(-15deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cta-shine::after {
+    animation: sweep 3.6s ease-in-out infinite;
+  }
+}
+
+@keyframes sweep {
+  0%, 55% { transform: translateX(-160%) skewX(-15deg); }
+  100% { transform: translateX(260%) skewX(-15deg); }
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── CTA finale — sweep branco para o botão âmbar ─────────────── */
+.cta-shine-white {
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-shine-white::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-160%) skewX(-15deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cta-shine-white::after {
+    animation: sweep 4s ease-in-out infinite;
+  }
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Índice de seção (estilo Apple) — troca do número atual ──────── */
+@keyframes sectionIndexFade {
+  0% { opacity: 0; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* ────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
