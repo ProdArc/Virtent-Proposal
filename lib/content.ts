@@ -13,7 +13,7 @@ export const content = {
   company: {
     name: "Virtent",
     tagline: "Operação virtual no WhatsApp",
-    cnpj: "00.000.000/0001-00", // TODO: preencher CNPJ real
+    cnpj: "00.000.000/0001-00", // TODO: preencher CNPJ
     email: "contato@virtent.com.br", // TODO: preencher email real
     phone: "(11) 93055-5399",
     website: "virtent.com.br",

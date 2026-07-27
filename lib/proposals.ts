@@ -1,6 +1,6 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
-import type { Content } from "@/lib/content";
+import { content as baseContent, type Content } from "@/lib/content";
 
 export type ProposalStatus = "rascunho" | "enviada" | "visualizada";
 
@@ -63,4 +63,63 @@ export async function markProposalViewed(id: string): Promise<void> {
   if (error) {
     console.error(`Falha ao marcar proposta ${id} como visualizada:`, error.message);
   }
+}
+
+export interface NewProposalInput {
+  clientName: string;
+  consultantName: string;
+  date: string;
+  validUntil: string;
+  monthlyPrice: string;
+  setupPrice: string;
+}
+
+function slugify(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "") // remove acentos (NFD separa a letra do diacrítico)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function randomSuffix(length = 6): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let out = "";
+  for (let i = 0; i < length; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+/**
+ * Cria uma proposta nova a partir do template em lib/content.ts, sobrescrevendo
+ * só os campos que mudam por cliente. O slug sempre ganha um sufixo aleatório
+ * de 6 caracteres — nunca é só o nome do cliente (não pode ser adivinhável).
+ */
+export async function createProposal(input: NewProposalInput): Promise<{ slug: string }> {
+  const supabase = getSupabaseServerClient();
+
+  const proposalContent: Content = structuredClone(baseContent);
+  proposalContent.client.name = input.clientName;
+  proposalContent.proposal.number = input.consultantName;
+  proposalContent.proposal.date = input.date;
+  proposalContent.proposal.validUntil = input.validUntil;
+  proposalContent.investimento.plan.price = input.monthlyPrice;
+  proposalContent.investimento.plan.setupPrice = input.setupPrice;
+  proposalContent.meta.title = `Proposta Comercial - Virtent | ${input.clientName}`;
+  proposalContent.meta.description = `Proposta de operação virtual Virtent no WhatsApp para ${input.clientName}.`;
+
+  const slug = `${slugify(input.clientName)}-${randomSuffix()}`;
+
+  const { error } = await supabase.from("proposals").insert({
+    slug,
+    client_name: input.clientName,
+    status: "rascunho",
+    content: proposalContent,
+  });
+
+  if (error) {
+    throw new Error(`Falha ao criar proposta: ${error.message}`);
+  }
+
+  return { slug };
 }

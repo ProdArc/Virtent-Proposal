@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
+import { Buildings } from "@phosphor-icons/react/dist/ssr";
 import { useContent } from "@/lib/content-context";
 
 const SCROLL_PX_PER_SECOND = 250;
@@ -198,20 +198,15 @@ export default function HeroSection() {
           {...stagger(3)}
           className="absolute z-10 bottom-6 sm:bottom-10 left-6 sm:left-10 flex items-center gap-2.5 rounded-2xl bg-white/70 backdrop-blur-sm border border-black/5 pl-2 pr-3.5 py-2 shadow-sm"
         >
-          <Image
-            src="/images/logo-cartao-todos.png"
-            alt={content.client.name}
-            width={512}
-            height={512}
-            className="w-7 h-7 sm:w-8 sm:h-8 shrink-0"
-            priority
-          />
-          <div className="flex flex-col leading-none">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ECFDF5] flex items-center justify-center shrink-0">
+            <Buildings weight="duotone" size={16} color="#065F46" />
+          </div>
+          <div className="flex flex-col leading-none min-w-0">
             <span className="text-[9px] uppercase tracking-[0.14em] text-[#A1A1AA] font-medium mb-0.5">
               Proposta para
             </span>
-            <span className="text-xs sm:text-[13px] font-semibold text-[#18181B]">
-              Cartão de TODOS
+            <span className="text-xs sm:text-[13px] font-semibold text-[#18181B] truncate max-w-[180px] sm:max-w-[220px]">
+              {content.client.name}
             </span>
           </div>
         </motion.div>
