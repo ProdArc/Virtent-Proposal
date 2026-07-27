@@ -24,6 +24,13 @@
   --foreground: #18181B;
 }
 
+/* A logo fixa (NavBar) mede 68px de altura. Sem isso, ao navegar por âncora
+   (menu, links internos) o navegador encosta o topo da seção exatamente no
+   topo da viewport, escondendo o eyebrow atrás da logo fixa. */
+section[id] {
+  scroll-margin-top: 84px;
+}
+
 html {
   scroll-behavior: smooth;
 }
