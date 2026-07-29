@@ -62,9 +62,16 @@ export default function InvestimentoSection() {
                   </span>
                   <span className="text-sm text-white/60">{plan.period}</span>
                 </div>
-                <p className="text-xs text-white/50 mt-2">
-                  {plan.setupLabel}: <span className="font-semibold text-white/80 tabular-nums">{plan.setupPrice}</span>
-                </p>
+                <div className="flex flex-col gap-1 mt-2">
+                  <p className="text-xs text-white/50">
+                    {plan.setupLabel}: <span className="font-semibold text-white/80 tabular-nums">{plan.setupPrice}</span>
+                  </p>
+                  {plan.commissionLabel && (
+                    <p className="text-xs text-white/50">
+                      {plan.commissionLabel}: <span className="font-semibold text-white/80 tabular-nums">{plan.commissionValue}</span>
+                    </p>
+                  )}
+                </div>
               </div>
 
               <ul className="flex flex-col gap-2.5">

@@ -307,6 +307,8 @@ export const content = {
       period: "/mês",
       setupLabel: "Implantação única",
       setupPrice: "R$ 999,90",
+      commissionLabel: "Comissão sobre arrecadação via IA",
+      commissionValue: "5%",
       noFidelityBadge: "Sem fidelidade",
       features: [
         "Todas as réguas: vendas, cobrança, cancelamento e agendamento",
