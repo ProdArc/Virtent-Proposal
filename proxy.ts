@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isValidBasicAuth } from "@/lib/auth";
 
-// Gate simples de Basic Auth só para a listagem interna de propostas.
+// Gate simples de Basic Auth só para as áreas internas (propostas e financeiro).
 // "middleware.ts" foi renomeado para "proxy.ts" no Next 16 — ver
 // node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md.
 
@@ -30,5 +30,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/propostas", "/propostas/:path*"],
+  matcher: ["/propostas", "/propostas/:path*", "/financeiro", "/financeiro/:path*"],
 };

@@ -12,3 +12,34 @@ create table proposals (
 );
 
 create index proposals_slug_idx on proposals (slug);
+
+-- Controle financeiro: um cliente por linha, com dados de implantação e mensalidade recorrente.
+create table financial_clients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  setup_value numeric(12,2) not null default 0,
+  setup_due_date date,
+  setup_paid boolean not null default false,
+  setup_paid_at timestamptz,
+  monthly_value numeric(12,2) not null default 0,
+  commission_pct numeric(5,2) not null default 5,
+  due_day smallint not null default 10, -- dia do mês em que a mensalidade vence (1-28)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Uma linha por ciclo de cobrança mensal (mensalidade + comissão sobre arrecadação).
+create table financial_billings (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references financial_clients(id) on delete cascade,
+  due_date date not null,
+  monthly_value numeric(12,2) not null,   -- snapshot do valor no momento da geração
+  commission_pct numeric(5,2) not null,   -- snapshot do percentual no momento da geração
+  revenue_amount numeric(12,2) not null default 0, -- valor arrecadado informado pelo usuário
+  paid boolean not null default false,
+  paid_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index financial_billings_client_idx on financial_billings (client_id);
