@@ -6,14 +6,18 @@ import { revalidatePath } from "next/cache";
 import { isValidBasicAuth } from "@/lib/auth";
 import {
   deleteBilling,
+  deleteBillingComprovante,
   deleteBillingNfe,
   deleteFinancialClient,
+  deleteSetupComprovante,
   parseDecimalInput,
   setBillingPaid,
   setSetupPaid,
   updateBillingRevenue,
   updateFinancialClient,
+  uploadBillingComprovante,
   uploadBillingNfe,
+  uploadSetupComprovante,
 } from "@/lib/financial";
 
 async function assertAuthorized(): Promise<string | null> {
@@ -36,6 +40,7 @@ export async function updateClientAction(
   const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();
   const cnpj = String(formData.get("cnpj") || "").trim();
+  const email = String(formData.get("email") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
@@ -74,6 +79,7 @@ export async function updateClientAction(
     await updateFinancialClient(id, {
       name,
       cnpj: cnpj || null,
+      email: email || null,
       setupValue,
       setupDueDate: setupDueDate || null,
       monthlyValue,
@@ -175,5 +181,57 @@ export async function deleteNfeAction(formData: FormData): Promise<void> {
   if (!billingId || !clientId || !path) throw new Error("NFe inválida.");
 
   await deleteBillingNfe(billingId, path);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function uploadBillingComprovanteAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  const file = formData.get("file");
+  if (!billingId || !clientId) throw new Error("Cobrança inválida.");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Selecione um arquivo de comprovante.");
+
+  await uploadBillingComprovante(billingId, clientId, file);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function deleteBillingComprovanteAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  const path = String(formData.get("path") || "");
+  if (!billingId || !clientId || !path) throw new Error("Comprovante inválido.");
+
+  await deleteBillingComprovante(billingId, path);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function uploadSetupComprovanteAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  const file = formData.get("file");
+  if (!clientId) throw new Error("Cliente inválido.");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Selecione um arquivo de comprovante.");
+
+  await uploadSetupComprovante(clientId, file);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function deleteSetupComprovanteAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  const path = String(formData.get("path") || "");
+  if (!clientId || !path) throw new Error("Comprovante inválido.");
+
+  await deleteSetupComprovante(clientId, path);
   revalidatePath(`/financeiro/${clientId}`);
 }

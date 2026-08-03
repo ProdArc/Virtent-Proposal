@@ -20,6 +20,7 @@ export async function createFinancialClientAction(
 
   const name = String(formData.get("name") || "").trim();
   const cnpj = String(formData.get("cnpj") || "").trim();
+  const email = String(formData.get("email") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
@@ -53,6 +54,7 @@ export async function createFinancialClientAction(
     const created = await createFinancialClient({
       name,
       cnpj: cnpj || null,
+      email: email || null,
       setupValue,
       setupDueDate: setupDueDate || null,
       monthlyValue,

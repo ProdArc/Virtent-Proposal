@@ -44,9 +44,21 @@ export function EditClientForm({ client }: { client: FinancialClientRow }) {
             className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
           />
         </div>
-        <div className="sm:col-span-2">
+        <div>
           <label className="block text-xs font-semibold text-[#52525B] mb-1.5">CNPJ</label>
           <CnpjInput name="cnpj" defaultValue={client.cnpj} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
+            E-mail da unidade
+          </label>
+          <input
+            name="email"
+            type="email"
+            defaultValue={client.email ?? ""}
+            placeholder="unidade@exemplo.com"
+            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+          />
         </div>
         <div>
           <label className="block text-xs font-semibold text-[#52525B] mb-1.5">

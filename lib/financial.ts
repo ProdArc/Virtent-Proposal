@@ -5,10 +5,12 @@ export interface FinancialClientRow {
   id: string;
   name: string;
   cnpj: string | null;
+  email: string | null;
   setup_value: number;
   setup_due_date: string | null;
   setup_paid: boolean;
   setup_paid_at: string | null;
+  setup_comprovante_path: string | null;
   monthly_value: number;
   commission_pct: number;
   due_day: number;
@@ -27,6 +29,7 @@ export interface FinancialBillingRow {
   paid: boolean;
   paid_at: string | null;
   nfe_path: string | null;
+  comprovante_path: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,6 +80,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 export interface NewFinancialClientInput {
   name: string;
   cnpj: string | null;
+  email: string | null;
   setupValue: number;
   setupDueDate: string | null;
   monthlyValue: number;
@@ -166,6 +170,7 @@ export async function createFinancialClient(input: NewFinancialClientInput): Pro
     .insert({
       name: input.name,
       cnpj: input.cnpj,
+      email: input.email,
       setup_value: input.setupValue,
       setup_due_date: input.setupDueDate,
       monthly_value: input.monthlyValue,
@@ -193,6 +198,7 @@ export async function updateFinancialClient(
     .update({
       name: input.name,
       cnpj: input.cnpj,
+      email: input.email,
       setup_value: input.setupValue,
       setup_due_date: input.setupDueDate,
       monthly_value: input.monthlyValue,
@@ -337,9 +343,46 @@ export async function deleteBilling(id: string): Promise<void> {
 }
 
 const NFE_BUCKET = "nfes";
+const COMPROVANTE_BUCKET = "comprovantes";
 
 function sanitizeFilename(name: string): string {
   return name.trim().replace(/[^a-zA-Z0-9.\-_]+/g, "-");
+}
+
+async function uploadToBucket(bucket: string, path: string, file: File): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, { contentType: file.type || undefined, upsert: false });
+
+  if (error) {
+    throw new Error(`Falha ao enviar arquivo: ${error.message}`);
+  }
+}
+
+async function removeFromBucket(bucket: string, path: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+
+  if (error) {
+    throw new Error(`Falha ao excluir arquivo: ${error.message}`);
+  }
+}
+
+/** URL assinada temporária (1h) pra visualizar/baixar um anexo — os buckets são privados. */
+export async function getFileSignedUrl(bucket: string, path: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
+export function getNfeSignedUrl(path: string): Promise<string | null> {
+  return getFileSignedUrl(NFE_BUCKET, path);
+}
+
+export function getComprovanteSignedUrl(path: string): Promise<string | null> {
+  return getFileSignedUrl(COMPROVANTE_BUCKET, path);
 }
 
 /**
@@ -353,49 +396,94 @@ export async function uploadBillingNfe(
   clientId: string,
   file: File
 ): Promise<void> {
-  const supabase = getSupabaseServerClient();
   const path = `${clientId}/${billingId}/${Date.now()}-${sanitizeFilename(file.name)}`;
+  await uploadToBucket(NFE_BUCKET, path, file);
 
-  const { error: uploadError } = await supabase.storage
-    .from(NFE_BUCKET)
-    .upload(path, file, { contentType: file.type || undefined, upsert: false });
-
-  if (uploadError) {
-    throw new Error(`Falha ao enviar NFe: ${uploadError.message}`);
-  }
-
-  const { error: updateError } = await supabase
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
     .from("financial_billings")
     .update({ nfe_path: path, updated_at: new Date().toISOString() })
     .eq("id", billingId);
 
-  if (updateError) {
-    throw new Error(`Falha ao vincular NFe à cobrança: ${updateError.message}`);
+  if (error) {
+    throw new Error(`Falha ao vincular NFe à cobrança: ${error.message}`);
   }
 }
 
 export async function deleteBillingNfe(billingId: string, path: string): Promise<void> {
+  await removeFromBucket(NFE_BUCKET, path);
+
   const supabase = getSupabaseServerClient();
-
-  const { error: removeError } = await supabase.storage.from(NFE_BUCKET).remove([path]);
-  if (removeError) {
-    throw new Error(`Falha ao excluir arquivo da NFe: ${removeError.message}`);
-  }
-
-  const { error: updateError } = await supabase
+  const { error } = await supabase
     .from("financial_billings")
     .update({ nfe_path: null, updated_at: new Date().toISOString() })
     .eq("id", billingId);
 
-  if (updateError) {
-    throw new Error(`Falha ao desvincular NFe da cobrança: ${updateError.message}`);
+  if (error) {
+    throw new Error(`Falha ao desvincular NFe da cobrança: ${error.message}`);
   }
 }
 
-/** URL assinada temporária (1h) pra visualizar/baixar a NFe — o bucket é privado. */
-export async function getNfeSignedUrl(path: string): Promise<string | null> {
+/** Mesma lógica de uploadBillingNfe, mas pro comprovante de pagamento da cobrança mensal (bucket "comprovantes"). */
+export async function uploadBillingComprovante(
+  billingId: string,
+  clientId: string,
+  file: File
+): Promise<void> {
+  const path = `${clientId}/${billingId}/${Date.now()}-${sanitizeFilename(file.name)}`;
+  await uploadToBucket(COMPROVANTE_BUCKET, path, file);
+
   const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase.storage.from(NFE_BUCKET).createSignedUrl(path, 3600);
-  if (error || !data) return null;
-  return data.signedUrl;
+  const { error } = await supabase
+    .from("financial_billings")
+    .update({ comprovante_path: path, updated_at: new Date().toISOString() })
+    .eq("id", billingId);
+
+  if (error) {
+    throw new Error(`Falha ao vincular comprovante à cobrança: ${error.message}`);
+  }
+}
+
+export async function deleteBillingComprovante(billingId: string, path: string): Promise<void> {
+  await removeFromBucket(COMPROVANTE_BUCKET, path);
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_billings")
+    .update({ comprovante_path: null, updated_at: new Date().toISOString() })
+    .eq("id", billingId);
+
+  if (error) {
+    throw new Error(`Falha ao desvincular comprovante da cobrança: ${error.message}`);
+  }
+}
+
+/** Comprovante de pagamento da implantação (taxa única) — um por cliente, mesmo bucket "comprovantes". */
+export async function uploadSetupComprovante(clientId: string, file: File): Promise<void> {
+  const path = `${clientId}/implantacao/${Date.now()}-${sanitizeFilename(file.name)}`;
+  await uploadToBucket(COMPROVANTE_BUCKET, path, file);
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ setup_comprovante_path: path, updated_at: new Date().toISOString() })
+    .eq("id", clientId);
+
+  if (error) {
+    throw new Error(`Falha ao vincular comprovante à implantação: ${error.message}`);
+  }
+}
+
+export async function deleteSetupComprovante(clientId: string, path: string): Promise<void> {
+  await removeFromBucket(COMPROVANTE_BUCKET, path);
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ setup_comprovante_path: null, updated_at: new Date().toISOString() })
+    .eq("id", clientId);
+
+  if (error) {
+    throw new Error(`Falha ao desvincular comprovante da implantação: ${error.message}`);
+  }
 }

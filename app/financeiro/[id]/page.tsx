@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   calcBillingTotal,
   ensureCurrentBilling,
+  getComprovanteSignedUrl,
   getFinancialClient,
   getNfeSignedUrl,
   listBillingsForClient,
@@ -14,12 +15,16 @@ import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import {
   deleteBillingAction,
+  deleteBillingComprovanteAction,
   deleteClientAction,
   deleteNfeAction,
+  deleteSetupComprovanteAction,
   toggleBillingPaidAction,
   toggleSetupPaidAction,
   updateBillingRevenueAction,
+  uploadBillingComprovanteAction,
   uploadNfeAction,
+  uploadSetupComprovanteAction,
 } from "./actions";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -63,14 +68,25 @@ export default async function FinanceiroClientPage({
   const billings = await listBillingsForClient(id);
 
   const nfeUrls: Record<string, string> = {};
-  await Promise.all(
-    billings
+  const comprovanteUrls: Record<string, string> = {};
+  await Promise.all([
+    ...billings
       .filter((b) => b.nfe_path)
       .map(async (b) => {
         const url = await getNfeSignedUrl(b.nfe_path!);
         if (url) nfeUrls[b.id] = url;
-      })
-  );
+      }),
+    ...billings
+      .filter((b) => b.comprovante_path)
+      .map(async (b) => {
+        const url = await getComprovanteSignedUrl(b.comprovante_path!);
+        if (url) comprovanteUrls[b.id] = url;
+      }),
+  ]);
+
+  const setupComprovanteUrl = client.setup_comprovante_path
+    ? await getComprovanteSignedUrl(client.setup_comprovante_path)
+    : null;
 
   const now = new Date();
   const todayIso = now.toISOString().slice(0, 10);
@@ -171,49 +187,100 @@ export default async function FinanceiroClientPage({
           </form>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-[#E4E4E7]">
-          <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">NFe</p>
-          {b.nfe_path ? (
-            <div className="flex items-center gap-3">
-              <a
-                href={nfeUrls[b.id] ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
-              >
-                Ver NFe
-              </a>
-              <form action={deleteNfeAction}>
+        <div className="mt-3 pt-3 border-t border-[#E4E4E7] grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">NFe</p>
+            {b.nfe_path ? (
+              <div className="flex items-center gap-3">
+                <a
+                  href={nfeUrls[b.id] ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                >
+                  Ver NFe
+                </a>
+                <form action={deleteNfeAction}>
+                  <input type="hidden" name="billingId" value={b.id} />
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <input type="hidden" name="path" value={b.nfe_path} />
+                  <ConfirmButton
+                    confirmText="Excluir a NFe desta cobrança?"
+                    className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                  >
+                    Excluir
+                  </ConfirmButton>
+                </form>
+              </div>
+            ) : (
+              <form action={uploadNfeAction} encType="multipart/form-data" className="flex items-center gap-2">
                 <input type="hidden" name="billingId" value={b.id} />
                 <input type="hidden" name="clientId" value={client.id} />
-                <input type="hidden" name="path" value={b.nfe_path} />
-                <ConfirmButton
-                  confirmText="Excluir a NFe desta cobrança?"
-                  className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                <input
+                  type="file"
+                  name="file"
+                  accept=".pdf,.xml"
+                  required
+                  className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                />
+                <SubmitButton
+                  pendingLabel="Enviando..."
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
                 >
-                  Excluir
-                </ConfirmButton>
+                  Enviar
+                </SubmitButton>
               </form>
-            </div>
-          ) : (
-            <form action={uploadNfeAction} encType="multipart/form-data" className="flex items-center gap-2">
-              <input type="hidden" name="billingId" value={b.id} />
-              <input type="hidden" name="clientId" value={client.id} />
-              <input
-                type="file"
-                name="file"
-                accept=".pdf,.xml"
-                required
-                className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
-              />
-              <SubmitButton
-                pendingLabel="Enviando..."
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+            )}
+          </div>
+
+          <div>
+            <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">Comprovante de pagamento</p>
+            {b.comprovante_path ? (
+              <div className="flex items-center gap-3">
+                <a
+                  href={comprovanteUrls[b.id] ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                >
+                  Ver comprovante
+                </a>
+                <form action={deleteBillingComprovanteAction}>
+                  <input type="hidden" name="billingId" value={b.id} />
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <input type="hidden" name="path" value={b.comprovante_path} />
+                  <ConfirmButton
+                    confirmText="Excluir o comprovante desta cobrança?"
+                    className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                  >
+                    Excluir
+                  </ConfirmButton>
+                </form>
+              </div>
+            ) : (
+              <form
+                action={uploadBillingComprovanteAction}
+                encType="multipart/form-data"
+                className="flex items-center gap-2"
               >
-                Enviar
-              </SubmitButton>
-            </form>
-          )}
+                <input type="hidden" name="billingId" value={b.id} />
+                <input type="hidden" name="clientId" value={client.id} />
+                <input
+                  type="file"
+                  name="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  required
+                  className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                />
+                <SubmitButton
+                  pendingLabel="Enviando..."
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                >
+                  Enviar
+                </SubmitButton>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -238,6 +305,7 @@ export default async function FinanceiroClientPage({
               {client.name}
             </h1>
             {client.cnpj && <p className="text-xs text-[#A1A1AA] mt-1">CNPJ {client.cnpj}</p>}
+            {client.email && <p className="text-xs text-[#A1A1AA]">{client.email}</p>}
           </div>
           <form action={deleteClientAction}>
             <input type="hidden" name="id" value={client.id} />
@@ -285,6 +353,53 @@ export default async function FinanceiroClientPage({
                 </SubmitButton>
               </form>
             </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">Comprovante de pagamento</p>
+            {client.setup_comprovante_path ? (
+              <div className="flex items-center gap-3">
+                <a
+                  href={setupComprovanteUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                >
+                  Ver comprovante
+                </a>
+                <form action={deleteSetupComprovanteAction}>
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <input type="hidden" name="path" value={client.setup_comprovante_path} />
+                  <ConfirmButton
+                    confirmText="Excluir o comprovante da implantação?"
+                    className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                  >
+                    Excluir
+                  </ConfirmButton>
+                </form>
+              </div>
+            ) : (
+              <form
+                action={uploadSetupComprovanteAction}
+                encType="multipart/form-data"
+                className="flex items-center gap-2"
+              >
+                <input type="hidden" name="clientId" value={client.id} />
+                <input
+                  type="file"
+                  name="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  required
+                  className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                />
+                <SubmitButton
+                  pendingLabel="Enviando..."
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                >
+                  Enviar
+                </SubmitButton>
+              </form>
+            )}
           </div>
         </section>
 

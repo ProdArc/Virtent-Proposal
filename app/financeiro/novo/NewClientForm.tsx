@@ -47,11 +47,24 @@ export function NewClientForm() {
           />
         </div>
 
-        <div className="sm:col-span-2">
+        <div>
           <label htmlFor="cnpj" className="block text-xs font-semibold text-[#52525B] mb-1.5">
             CNPJ
           </label>
           <CnpjInput id="cnpj" name="cnpj" />
+        </div>
+
+        <div>
+          <label htmlFor="email" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+            E-mail da unidade
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="unidade@exemplo.com"
+            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+          />
         </div>
 
         <div>
