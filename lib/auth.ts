@@ -20,7 +20,7 @@ export function isValidBasicAuth(authHeader: string | null): boolean {
 
   const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
   const separatorIndex = decoded.indexOf(":");
-  const username = decoded.slice(0, separatorIndex);
+  const username = decoded.slice(0, separatorIndex).toLowerCase();
   const password = decoded.slice(separatorIndex + 1);
 
   const expected = USERS[username];
