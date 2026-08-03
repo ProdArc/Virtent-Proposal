@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Default é 1MB — pequeno demais pro upload de PDF/XML de NFe em
+  // app/financeiro/[id]/actions.ts (uploadNfeAction).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
+  },
 };
 
 export default nextConfig;

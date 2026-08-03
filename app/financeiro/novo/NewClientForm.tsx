@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createFinancialClientAction, type NewFinancialClientState } from "./actions";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
+import { CnpjInput } from "@/components/ui/CnpjInput";
 
 const initialState: NewFinancialClientState = {};
 
@@ -44,6 +45,13 @@ export function NewClientForm() {
             placeholder="Cartão de TODOS - Campinas Sudoeste"
             className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
           />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="cnpj" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+            CNPJ
+          </label>
+          <CnpjInput id="cnpj" name="cnpj" />
         </div>
 
         <div>

@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 export interface FinancialClientRow {
   id: string;
   name: string;
+  cnpj: string | null;
   setup_value: number;
   setup_due_date: string | null;
   setup_paid: boolean;
@@ -25,6 +26,7 @@ export interface FinancialBillingRow {
   revenue_amount: number;
   paid: boolean;
   paid_at: string | null;
+  nfe_path: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -74,6 +76,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 
 export interface NewFinancialClientInput {
   name: string;
+  cnpj: string | null;
   setupValue: number;
   setupDueDate: string | null;
   monthlyValue: number;
@@ -162,6 +165,7 @@ export async function createFinancialClient(input: NewFinancialClientInput): Pro
     .from("financial_clients")
     .insert({
       name: input.name,
+      cnpj: input.cnpj,
       setup_value: input.setupValue,
       setup_due_date: input.setupDueDate,
       monthly_value: input.monthlyValue,
@@ -188,6 +192,7 @@ export async function updateFinancialClient(
     .from("financial_clients")
     .update({
       name: input.name,
+      cnpj: input.cnpj,
       setup_value: input.setupValue,
       setup_due_date: input.setupDueDate,
       monthly_value: input.monthlyValue,
@@ -238,40 +243,44 @@ function nextCycleDueDate(previousDueDateIso: string, dueDay: number): string {
 
 /**
  * Geração preguiçosa: garante que existem cobranças para todos os ciclos já
- * vencidos e ainda não gerados. Chamada ao abrir a página de detalhe do
- * cliente — assim o usuário nunca precisa criar a cobrança manualmente, só
- * editar o valor arrecadado e dar baixa.
+ * vencidos e ainda não gerados, MAIS uma única referência futura (o próximo
+ * ciclo, ainda não vencido) — pra aparecer na lista com antecedência e já dar
+ * pra anexar comprovante/NFe antes do vencimento chegar. Chamada ao abrir a
+ * página de detalhe do cliente.
  *
  * Mensalidade é pós-paga: o 1º ciclo usa exatamente `first_billing_date`
  * (configurado no cadastro do cliente), não "mês atual + due_day" — senão um
  * cliente cadastrado hoje ganharia uma cobrança imediata sem ter usado o
  * serviço por um ciclo ainda. Os ciclos seguintes avançam 1 mês por vez a
- * partir da última cobrança já gerada, e nunca são antecipados: só materializa
- * um ciclo quando o vencimento dele já chegou.
+ * partir da última cobrança já gerada. Nunca existe mais de uma referência
+ * futura por vez: o loop para assim que a última cobrança gerada (ou já
+ * existente) ainda não venceu.
  */
 export async function ensureCurrentBilling(client: FinancialClientRow): Promise<void> {
   const supabase = getSupabaseServerClient();
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const { data: lastBilling, error: lastError } = await withRetry(async () =>
-    supabase
-      .from("financial_billings")
-      .select("due_date")
-      .eq("client_id", client.id)
-      .order("due_date", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-  );
+  for (;;) {
+    const { data: lastBilling, error: lastError } = await withRetry(async () =>
+      supabase
+        .from("financial_billings")
+        .select("due_date")
+        .eq("client_id", client.id)
+        .order("due_date", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    );
 
-  if (lastError) {
-    throw new Error(`Falha ao verificar cobrança do ciclo atual: ${lastError.message}`);
-  }
+    if (lastError) {
+      throw new Error(`Falha ao verificar cobrança do ciclo atual: ${lastError.message}`);
+    }
 
-  let nextDueDate = lastBilling
-    ? nextCycleDueDate(lastBilling.due_date, client.due_day)
-    : client.first_billing_date;
+    if (lastBilling && lastBilling.due_date > todayIso) break;
 
-  while (nextDueDate <= todayIso) {
+    const nextDueDate = lastBilling
+      ? nextCycleDueDate(lastBilling.due_date, client.due_day)
+      : client.first_billing_date;
+
     const { error: insertError } = await withRetry(async () =>
       supabase.from("financial_billings").insert({
         client_id: client.id,
@@ -286,7 +295,7 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
       throw new Error(`Falha ao gerar cobrança do ciclo: ${insertError.message}`);
     }
 
-    nextDueDate = nextCycleDueDate(nextDueDate, client.due_day);
+    if (nextDueDate > todayIso) break;
   }
 }
 
@@ -325,4 +334,68 @@ export async function deleteBilling(id: string): Promise<void> {
   if (error) {
     throw new Error(`Falha ao excluir cobrança "${id}": ${error.message}`);
   }
+}
+
+const NFE_BUCKET = "nfes";
+
+function sanitizeFilename(name: string): string {
+  return name.trim().replace(/[^a-zA-Z0-9.\-_]+/g, "-");
+}
+
+/**
+ * Envia o arquivo de NFe (PDF/XML) de uma cobrança pro bucket privado
+ * "nfes". Só chamada pela UI quando a cobrança ainda não tem `nfe_path` —
+ * pra substituir um arquivo já enviado, o fluxo é excluir e enviar de novo
+ * (ver `deleteBillingNfe`), evitando arquivo órfão no storage.
+ */
+export async function uploadBillingNfe(
+  billingId: string,
+  clientId: string,
+  file: File
+): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const path = `${clientId}/${billingId}/${Date.now()}-${sanitizeFilename(file.name)}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(NFE_BUCKET)
+    .upload(path, file, { contentType: file.type || undefined, upsert: false });
+
+  if (uploadError) {
+    throw new Error(`Falha ao enviar NFe: ${uploadError.message}`);
+  }
+
+  const { error: updateError } = await supabase
+    .from("financial_billings")
+    .update({ nfe_path: path, updated_at: new Date().toISOString() })
+    .eq("id", billingId);
+
+  if (updateError) {
+    throw new Error(`Falha ao vincular NFe à cobrança: ${updateError.message}`);
+  }
+}
+
+export async function deleteBillingNfe(billingId: string, path: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+
+  const { error: removeError } = await supabase.storage.from(NFE_BUCKET).remove([path]);
+  if (removeError) {
+    throw new Error(`Falha ao excluir arquivo da NFe: ${removeError.message}`);
+  }
+
+  const { error: updateError } = await supabase
+    .from("financial_billings")
+    .update({ nfe_path: null, updated_at: new Date().toISOString() })
+    .eq("id", billingId);
+
+  if (updateError) {
+    throw new Error(`Falha ao desvincular NFe da cobrança: ${updateError.message}`);
+  }
+}
+
+/** URL assinada temporária (1h) pra visualizar/baixar a NFe — o bucket é privado. */
+export async function getNfeSignedUrl(path: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase.storage.from(NFE_BUCKET).createSignedUrl(path, 3600);
+  if (error || !data) return null;
+  return data.signedUrl;
 }

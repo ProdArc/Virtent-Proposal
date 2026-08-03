@@ -6,12 +6,14 @@ import { revalidatePath } from "next/cache";
 import { isValidBasicAuth } from "@/lib/auth";
 import {
   deleteBilling,
+  deleteBillingNfe,
   deleteFinancialClient,
   parseDecimalInput,
   setBillingPaid,
   setSetupPaid,
   updateBillingRevenue,
   updateFinancialClient,
+  uploadBillingNfe,
 } from "@/lib/financial";
 
 async function assertAuthorized(): Promise<string | null> {
@@ -33,6 +35,7 @@ export async function updateClientAction(
 
   const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();
+  const cnpj = String(formData.get("cnpj") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
@@ -70,6 +73,7 @@ export async function updateClientAction(
   try {
     await updateFinancialClient(id, {
       name,
+      cnpj: cnpj || null,
       setupValue,
       setupDueDate: setupDueDate || null,
       monthlyValue,
@@ -144,5 +148,32 @@ export async function deleteBillingAction(formData: FormData): Promise<void> {
   if (!billingId || !clientId) throw new Error("Cobrança inválida.");
 
   await deleteBilling(billingId);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function uploadNfeAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  const file = formData.get("file");
+  if (!billingId || !clientId) throw new Error("Cobrança inválida.");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Selecione um arquivo de NFe.");
+
+  await uploadBillingNfe(billingId, clientId, file);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function deleteNfeAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  const path = String(formData.get("path") || "");
+  if (!billingId || !clientId || !path) throw new Error("NFe inválida.");
+
+  await deleteBillingNfe(billingId, path);
   revalidatePath(`/financeiro/${clientId}`);
 }

@@ -4,6 +4,7 @@ import {
   calcBillingTotal,
   ensureCurrentBilling,
   getFinancialClient,
+  getNfeSignedUrl,
   listBillingsForClient,
   type FinancialBillingRow,
 } from "@/lib/financial";
@@ -14,9 +15,11 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import {
   deleteBillingAction,
   deleteClientAction,
+  deleteNfeAction,
   toggleBillingPaidAction,
   toggleSetupPaidAction,
   updateBillingRevenueAction,
+  uploadNfeAction,
 } from "./actions";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,6 +40,10 @@ function isOverdue(b: FinancialBillingRow, todayIso: string): boolean {
   return !b.paid && b.due_date < todayIso;
 }
 
+function isFuture(b: FinancialBillingRow, todayIso: string): boolean {
+  return !b.paid && b.due_date > todayIso;
+}
+
 // Status de pagamento muda a cada baixa; e a cobrança do ciclo atual precisa
 // ser gerada (ensureCurrentBilling) sempre que a página é aberta.
 export const dynamic = "force-dynamic";
@@ -55,6 +62,16 @@ export default async function FinanceiroClientPage({
   await ensureCurrentBilling(client);
   const billings = await listBillingsForClient(id);
 
+  const nfeUrls: Record<string, string> = {};
+  await Promise.all(
+    billings
+      .filter((b) => b.nfe_path)
+      .map(async (b) => {
+        const url = await getNfeSignedUrl(b.nfe_path!);
+        if (url) nfeUrls[b.id] = url;
+      })
+  );
+
   const now = new Date();
   const todayIso = now.toISOString().slice(0, 10);
 
@@ -71,13 +88,16 @@ export default async function FinanceiroClientPage({
   function billingCard(b: FinancialBillingRow) {
     const { commission_value, total_value } = calcBillingTotal(b);
     const overdue = isOverdue(b, todayIso);
+    const future = isFuture(b, todayIso);
     const current = isSameCycle(b.due_date, now);
-    const statusLabel = b.paid ? "Paga" : overdue ? "Atrasada" : "Pendente";
+    const statusLabel = b.paid ? "Paga" : overdue ? "Atrasada" : future ? "Futura" : "Pendente";
     const statusClass = b.paid
       ? "bg-[#ECFDF5] text-[#065F46]"
       : overdue
         ? "bg-[#FEF2F2] text-[#B91C1C]"
-        : "bg-[#FFF7ED] text-[#B45309]";
+        : future
+          ? "bg-[#F4F4F5] text-[#71717A]"
+          : "bg-[#FFF7ED] text-[#B45309]";
 
     return (
       <div key={b.id} className="rounded-xl border border-[#E4E4E7] p-4">
@@ -150,6 +170,51 @@ export default async function FinanceiroClientPage({
             </ConfirmButton>
           </form>
         </div>
+
+        <div className="mt-3 pt-3 border-t border-[#E4E4E7]">
+          <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">NFe</p>
+          {b.nfe_path ? (
+            <div className="flex items-center gap-3">
+              <a
+                href={nfeUrls[b.id] ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+              >
+                Ver NFe
+              </a>
+              <form action={deleteNfeAction}>
+                <input type="hidden" name="billingId" value={b.id} />
+                <input type="hidden" name="clientId" value={client.id} />
+                <input type="hidden" name="path" value={b.nfe_path} />
+                <ConfirmButton
+                  confirmText="Excluir a NFe desta cobrança?"
+                  className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                >
+                  Excluir
+                </ConfirmButton>
+              </form>
+            </div>
+          ) : (
+            <form action={uploadNfeAction} encType="multipart/form-data" className="flex items-center gap-2">
+              <input type="hidden" name="billingId" value={b.id} />
+              <input type="hidden" name="clientId" value={client.id} />
+              <input
+                type="file"
+                name="file"
+                accept=".pdf,.xml"
+                required
+                className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+              />
+              <SubmitButton
+                pendingLabel="Enviando..."
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+              >
+                Enviar
+              </SubmitButton>
+            </form>
+          )}
+        </div>
       </div>
     );
   }
@@ -172,6 +237,7 @@ export default async function FinanceiroClientPage({
             <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B]">
               {client.name}
             </h1>
+            {client.cnpj && <p className="text-xs text-[#A1A1AA] mt-1">CNPJ {client.cnpj}</p>}
           </div>
           <form action={deleteClientAction}>
             <input type="hidden" name="id" value={client.id} />
