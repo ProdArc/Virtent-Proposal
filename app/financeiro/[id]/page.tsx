@@ -9,22 +9,30 @@ import {
   listBillingsForClient,
   type FinancialBillingRow,
 } from "@/lib/financial";
+import { billingEmailBlockedReason, renderBillingEmail, renderSetupEmail, setupEmailBlockedReason } from "@/lib/email";
 import { EditClientForm } from "./EditClientForm";
 import { ConfirmButton } from "./ConfirmButton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { SendEmailButton } from "@/components/ui/SendEmailButton";
 import {
   deleteBillingAction,
   deleteBillingComprovanteAction,
   deleteClientAction,
   deleteNfeAction,
   deleteSetupComprovanteAction,
+  deleteSetupNfeAction,
+  sendBillingEmailAction,
+  sendSetupEmailAction,
   toggleBillingPaidAction,
   toggleSetupPaidAction,
+  updateBillingPixLinkAction,
   updateBillingRevenueAction,
+  updateSetupPixLinkAction,
   uploadBillingComprovanteAction,
   uploadNfeAction,
   uploadSetupComprovanteAction,
+  uploadSetupNfeAction,
 } from "./actions";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -87,6 +95,10 @@ export default async function FinanceiroClientPage({
   const setupComprovanteUrl = client.setup_comprovante_path
     ? await getComprovanteSignedUrl(client.setup_comprovante_path)
     : null;
+  const setupNfeUrl = client.setup_nfe_path ? await getNfeSignedUrl(client.setup_nfe_path) : null;
+
+  const setupEmailPreview = renderSetupEmail(client);
+  const setupEmailBlocked = setupEmailBlockedReason(client);
 
   const now = new Date();
   const todayIso = now.toISOString().slice(0, 10);
@@ -106,6 +118,8 @@ export default async function FinanceiroClientPage({
     const overdue = isOverdue(b, todayIso);
     const future = isFuture(b, todayIso);
     const current = isSameCycle(b.due_date, now);
+    const billingEmailPreview = renderBillingEmail(client, b);
+    const billingEmailBlocked = billingEmailBlockedReason(client, b);
     const statusLabel = b.paid ? "Paga" : overdue ? "Atrasada" : future ? "Futura" : "Pendente";
     const statusClass = b.paid
       ? "bg-[#ECFDF5] text-[#065F46]"
@@ -282,6 +296,44 @@ export default async function FinanceiroClientPage({
             )}
           </div>
         </div>
+
+        <div className="mt-3 pt-3 border-t border-[#E4E4E7]">
+          <form action={updateBillingPixLinkAction} className="flex items-end gap-2">
+            <input type="hidden" name="billingId" value={b.id} />
+            <input type="hidden" name="clientId" value={client.id} />
+            <div className="flex-1">
+              <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                Link de cobrança PIX
+              </label>
+              <input
+                name="pixLink"
+                type="text"
+                defaultValue={b.pix_link ?? ""}
+                placeholder="Link ou código copia-e-cola"
+                className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+              />
+            </div>
+            <SubmitButton
+              pendingLabel="Salvando..."
+              className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+            >
+              Salvar
+            </SubmitButton>
+          </form>
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-[#E4E4E7]">
+          <SendEmailButton
+            action={sendBillingEmailAction}
+            hiddenFields={{ billingId: b.id, clientId: client.id }}
+            to={billingEmailPreview.to}
+            subject={billingEmailPreview.subject}
+            previewHtml={billingEmailPreview.html}
+            blockedReason={billingEmailBlocked}
+            sentAt={b.email_sent_at}
+            triggerLabel="Enviar cobrança por e-mail"
+          />
+        </div>
       </div>
     );
   }
@@ -355,51 +407,137 @@ export default async function FinanceiroClientPage({
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">Comprovante de pagamento</p>
-            {client.setup_comprovante_path ? (
-              <div className="flex items-center gap-3">
-                <a
-                  href={setupComprovanteUrl ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
-                >
-                  Ver comprovante
-                </a>
-                <form action={deleteSetupComprovanteAction}>
-                  <input type="hidden" name="clientId" value={client.id} />
-                  <input type="hidden" name="path" value={client.setup_comprovante_path} />
-                  <ConfirmButton
-                    confirmText="Excluir o comprovante da implantação?"
-                    className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+          <div className="mt-4 pt-4 border-t border-[#E4E4E7] grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">NFe</p>
+              {client.setup_nfe_path ? (
+                <div className="flex items-center gap-3">
+                  <a
+                    href={setupNfeUrl ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
                   >
-                    Excluir
-                  </ConfirmButton>
-                </form>
-              </div>
-            ) : (
-              <form
-                action={uploadSetupComprovanteAction}
-                encType="multipart/form-data"
-                className="flex items-center gap-2"
-              >
-                <input type="hidden" name="clientId" value={client.id} />
-                <input
-                  type="file"
-                  name="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  required
-                  className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
-                />
-                <SubmitButton
-                  pendingLabel="Enviando..."
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                    Ver NFe
+                  </a>
+                  <form action={deleteSetupNfeAction}>
+                    <input type="hidden" name="clientId" value={client.id} />
+                    <input type="hidden" name="path" value={client.setup_nfe_path} />
+                    <ConfirmButton
+                      confirmText="Excluir a NFe da implantação?"
+                      className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                    >
+                      Excluir
+                    </ConfirmButton>
+                  </form>
+                </div>
+              ) : (
+                <form
+                  action={uploadSetupNfeAction}
+                  encType="multipart/form-data"
+                  className="flex items-center gap-2"
                 >
-                  Enviar
-                </SubmitButton>
-              </form>
-            )}
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <input
+                    type="file"
+                    name="file"
+                    accept=".pdf,.xml"
+                    required
+                    className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                  />
+                  <SubmitButton
+                    pendingLabel="Enviando..."
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  >
+                    Enviar
+                  </SubmitButton>
+                </form>
+              )}
+            </div>
+
+            <div>
+              <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">Comprovante de pagamento</p>
+              {client.setup_comprovante_path ? (
+                <div className="flex items-center gap-3">
+                  <a
+                    href={setupComprovanteUrl ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                  >
+                    Ver comprovante
+                  </a>
+                  <form action={deleteSetupComprovanteAction}>
+                    <input type="hidden" name="clientId" value={client.id} />
+                    <input type="hidden" name="path" value={client.setup_comprovante_path} />
+                    <ConfirmButton
+                      confirmText="Excluir o comprovante da implantação?"
+                      className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                    >
+                      Excluir
+                    </ConfirmButton>
+                  </form>
+                </div>
+              ) : (
+                <form
+                  action={uploadSetupComprovanteAction}
+                  encType="multipart/form-data"
+                  className="flex items-center gap-2"
+                >
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <input
+                    type="file"
+                    name="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
+                    className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                  />
+                  <SubmitButton
+                    pendingLabel="Enviando..."
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  >
+                    Enviar
+                  </SubmitButton>
+                </form>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <form action={updateSetupPixLinkAction} className="flex items-end gap-2">
+              <input type="hidden" name="clientId" value={client.id} />
+              <div className="flex-1">
+                <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                  Link de cobrança PIX
+                </label>
+                <input
+                  name="pixLink"
+                  type="text"
+                  defaultValue={client.setup_pix_link ?? ""}
+                  placeholder="Link ou código copia-e-cola"
+                  className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+                />
+              </div>
+              <SubmitButton
+                pendingLabel="Salvando..."
+                className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+              >
+                Salvar
+              </SubmitButton>
+            </form>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <SendEmailButton
+              action={sendSetupEmailAction}
+              hiddenFields={{ clientId: client.id }}
+              to={setupEmailPreview.to}
+              subject={setupEmailPreview.subject}
+              previewHtml={setupEmailPreview.html}
+              blockedReason={setupEmailBlocked}
+              sentAt={client.setup_email_sent_at}
+              triggerLabel="Enviar cobrança por e-mail"
+            />
           </div>
         </section>
 

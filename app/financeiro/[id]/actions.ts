@@ -10,15 +10,22 @@ import {
   deleteBillingNfe,
   deleteFinancialClient,
   deleteSetupComprovante,
+  deleteSetupNfe,
+  getBillingById,
+  getFinancialClient,
   parseDecimalInput,
   setBillingPaid,
   setSetupPaid,
+  updateBillingPixLink,
   updateBillingRevenue,
   updateFinancialClient,
+  updateSetupPixLink,
   uploadBillingComprovante,
   uploadBillingNfe,
   uploadSetupComprovante,
+  uploadSetupNfe,
 } from "@/lib/financial";
+import { sendBillingEmail, sendSetupEmail } from "@/lib/email";
 
 async function assertAuthorized(): Promise<string | null> {
   const authHeader = (await headers()).get("authorization");
@@ -233,5 +240,86 @@ export async function deleteSetupComprovanteAction(formData: FormData): Promise<
   if (!clientId || !path) throw new Error("Comprovante inválido.");
 
   await deleteSetupComprovante(clientId, path);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function uploadSetupNfeAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  const file = formData.get("file");
+  if (!clientId) throw new Error("Cliente inválido.");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Selecione um arquivo de NFe.");
+
+  await uploadSetupNfe(clientId, file);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function deleteSetupNfeAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  const path = String(formData.get("path") || "");
+  if (!clientId || !path) throw new Error("NFe inválida.");
+
+  await deleteSetupNfe(clientId, path);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function updateSetupPixLinkAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  const pixLink = String(formData.get("pixLink") || "").trim();
+  if (!clientId) throw new Error("Cliente inválido.");
+
+  await updateSetupPixLink(clientId, pixLink || null);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function updateBillingPixLinkAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  const pixLink = String(formData.get("pixLink") || "").trim();
+  if (!billingId || !clientId) throw new Error("Cobrança inválida.");
+
+  await updateBillingPixLink(billingId, pixLink || null);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function sendSetupEmailAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  if (!clientId) throw new Error("Cliente inválido.");
+
+  const client = await getFinancialClient(clientId);
+  if (!client) throw new Error("Cliente não encontrado.");
+
+  await sendSetupEmail(client);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function sendBillingEmailAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  if (!billingId || !clientId) throw new Error("Cobrança inválida.");
+
+  const client = await getFinancialClient(clientId);
+  if (!client) throw new Error("Cliente não encontrado.");
+  const billing = await getBillingById(billingId);
+  if (!billing) throw new Error("Cobrança não encontrada.");
+
+  await sendBillingEmail(client, billing);
   revalidatePath(`/financeiro/${clientId}`);
 }

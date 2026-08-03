@@ -24,6 +24,9 @@ create table financial_clients (
   setup_paid boolean not null default false,
   setup_paid_at timestamptz,
   setup_comprovante_path text, -- caminho do comprovante de pagamento da implantação no bucket "comprovantes"
+  setup_nfe_path text, -- caminho da NFe da implantação no bucket "nfes"
+  setup_pix_link text, -- link/copia-e-cola da cobrança PIX da implantação, exigido pra liberar o envio do e-mail
+  setup_email_sent_at timestamptz, -- cobrança de implantação só é enviada por e-mail 1 vez
   monthly_value numeric(12,2) not null default 0,
   commission_pct numeric(5,2) not null default 5,
   due_day smallint not null default 10, -- dia do mês em que a mensalidade vence (1-28)
@@ -44,6 +47,8 @@ create table financial_billings (
   paid_at timestamptz,
   nfe_path text, -- caminho do arquivo da NFe no bucket "nfes" do Supabase Storage
   comprovante_path text, -- caminho do comprovante de pagamento no bucket "comprovantes"
+  pix_link text, -- link/copia-e-cola da cobrança PIX do ciclo, exigido pra liberar o envio do e-mail
+  email_sent_at timestamptz, -- cobrança de cada referência/mês só é enviada por e-mail 1 vez
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

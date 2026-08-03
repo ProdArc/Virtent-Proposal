@@ -11,6 +11,9 @@ export interface FinancialClientRow {
   setup_paid: boolean;
   setup_paid_at: string | null;
   setup_comprovante_path: string | null;
+  setup_nfe_path: string | null;
+  setup_pix_link: string | null;
+  setup_email_sent_at: string | null;
   monthly_value: number;
   commission_pct: number;
   due_day: number;
@@ -30,6 +33,8 @@ export interface FinancialBillingRow {
   paid_at: string | null;
   nfe_path: string | null;
   comprovante_path: string | null;
+  pix_link: string | null;
+  email_sent_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -163,6 +168,21 @@ export async function listBillingsForClient(clientId: string): Promise<Financial
   return data ?? [];
 }
 
+export async function getBillingById(id: string): Promise<FinancialBillingRow | null> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("financial_billings")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Falha ao buscar cobrança "${id}": ${error.message}`);
+  }
+
+  return data as FinancialBillingRow | null;
+}
+
 export async function createFinancialClient(input: NewFinancialClientInput): Promise<{ id: string }> {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
@@ -236,6 +256,18 @@ export async function setSetupPaid(id: string, paid: boolean): Promise<void> {
 
   if (error) {
     throw new Error(`Falha ao atualizar status da implantação "${id}": ${error.message}`);
+  }
+}
+
+export async function updateSetupPixLink(id: string, pixLink: string | null): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ setup_pix_link: pixLink, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao atualizar link PIX da implantação "${id}": ${error.message}`);
   }
 }
 
@@ -314,6 +346,18 @@ export async function updateBillingRevenue(id: string, revenueAmount: number): P
 
   if (error) {
     throw new Error(`Falha ao atualizar valor arrecadado da cobrança "${id}": ${error.message}`);
+  }
+}
+
+export async function updateBillingPixLink(id: string, pixLink: string | null): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_billings")
+    .update({ pix_link: pixLink, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao atualizar link PIX da cobrança "${id}": ${error.message}`);
   }
 }
 
@@ -485,5 +529,82 @@ export async function deleteSetupComprovante(clientId: string, path: string): Pr
 
   if (error) {
     throw new Error(`Falha ao desvincular comprovante da implantação: ${error.message}`);
+  }
+}
+
+/** NFe da implantação (taxa única) — mesmo bucket "nfes" das mensalidades, path próprio. */
+export async function uploadSetupNfe(clientId: string, file: File): Promise<void> {
+  const path = `${clientId}/implantacao/${Date.now()}-${sanitizeFilename(file.name)}`;
+  await uploadToBucket(NFE_BUCKET, path, file);
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ setup_nfe_path: path, updated_at: new Date().toISOString() })
+    .eq("id", clientId);
+
+  if (error) {
+    throw new Error(`Falha ao vincular NFe à implantação: ${error.message}`);
+  }
+}
+
+export async function deleteSetupNfe(clientId: string, path: string): Promise<void> {
+  await removeFromBucket(NFE_BUCKET, path);
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ setup_nfe_path: null, updated_at: new Date().toISOString() })
+    .eq("id", clientId);
+
+  if (error) {
+    throw new Error(`Falha ao desvincular NFe da implantação: ${error.message}`);
+  }
+}
+
+interface DownloadedFile {
+  filename: string;
+  content: Buffer;
+}
+
+async function downloadFromBucket(bucket: string, path: string): Promise<DownloadedFile> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase.storage.from(bucket).download(path);
+
+  if (error || !data) {
+    throw new Error(`Falha ao baixar anexo: ${error?.message ?? "arquivo não encontrado"}`);
+  }
+
+  const content = Buffer.from(await data.arrayBuffer());
+  const filename = path.split("/").pop() ?? "arquivo";
+  return { filename, content };
+}
+
+/** Baixa o conteúdo de uma NFe (implantação ou mensalidade) pra anexar no e-mail de cobrança. */
+export function downloadNfe(path: string): Promise<DownloadedFile> {
+  return downloadFromBucket(NFE_BUCKET, path);
+}
+
+export async function markSetupEmailSent(id: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ setup_email_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao registrar envio do e-mail de implantação: ${error.message}`);
+  }
+}
+
+export async function markBillingEmailSent(id: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_billings")
+    .update({ email_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao registrar envio do e-mail de cobrança: ${error.message}`);
   }
 }
