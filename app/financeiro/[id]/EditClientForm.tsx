@@ -85,6 +85,21 @@ export function EditClientForm({ client }: { client: FinancialClientRow }) {
         </div>
         <div>
           <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
+            Primeiro vencimento da mensalidade
+          </label>
+          <input
+            name="firstBillingDate"
+            type="date"
+            required
+            defaultValue={client.first_billing_date}
+            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+          />
+          <p className="text-[11px] text-[#A1A1AA] mt-1">
+            Só afeta o 1º ciclo, antes de qualquer cobrança já gerada.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
             Comissão sobre arrecadação
           </label>
           <div className="flex items-center rounded-lg border border-[#E4E4E7] bg-white focus-within:ring-2 focus-within:ring-[#065F46]/30 focus-within:border-[#065F46]">

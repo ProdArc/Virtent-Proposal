@@ -37,9 +37,18 @@ export async function updateClientAction(
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
   const dueDayRaw = String(formData.get("dueDay") || "").trim();
+  const firstBillingDate = String(formData.get("firstBillingDate") || "").trim();
   const commissionPctRaw = String(formData.get("commissionPct") || "").trim();
 
-  if (!id || !name || !setupValueRaw || !monthlyValueRaw || !dueDayRaw || !commissionPctRaw) {
+  if (
+    !id ||
+    !name ||
+    !setupValueRaw ||
+    !monthlyValueRaw ||
+    !dueDayRaw ||
+    !firstBillingDate ||
+    !commissionPctRaw
+  ) {
     return { error: "Preencha todos os campos obrigatórios." };
   }
 
@@ -54,6 +63,9 @@ export async function updateClientAction(
   if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 28) {
     return { error: "Dia de vencimento precisa ser um número entre 1 e 28." };
   }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(firstBillingDate)) {
+    return { error: "Primeiro vencimento da mensalidade inválido." };
+  }
 
   try {
     await updateFinancialClient(id, {
@@ -62,6 +74,7 @@ export async function updateClientAction(
       setupDueDate: setupDueDate || null,
       monthlyValue,
       dueDay,
+      firstBillingDate,
       commissionPct,
     });
   } catch (err) {

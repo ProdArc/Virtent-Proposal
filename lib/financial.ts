@@ -11,6 +11,7 @@ export interface FinancialClientRow {
   monthly_value: number;
   commission_pct: number;
   due_day: number;
+  first_billing_date: string;
   created_at: string;
   updated_at: string;
 }
@@ -77,6 +78,7 @@ export interface NewFinancialClientInput {
   setupDueDate: string | null;
   monthlyValue: number;
   dueDay: number;
+  firstBillingDate: string;
   commissionPct: number;
 }
 
@@ -164,6 +166,7 @@ export async function createFinancialClient(input: NewFinancialClientInput): Pro
       setup_due_date: input.setupDueDate,
       monthly_value: input.monthlyValue,
       due_day: input.dueDay,
+      first_billing_date: input.firstBillingDate,
       commission_pct: input.commissionPct,
     })
     .select("id")
@@ -189,6 +192,7 @@ export async function updateFinancialClient(
       setup_due_date: input.setupDueDate,
       monthly_value: input.monthlyValue,
       due_day: input.dueDay,
+      first_billing_date: input.firstBillingDate,
       commission_pct: input.commissionPct,
       updated_at: new Date().toISOString(),
     })
@@ -224,47 +228,65 @@ export async function setSetupPaid(id: string, paid: boolean): Promise<void> {
   }
 }
 
+/** Soma um mês a uma due_date (YYYY-MM-DD), fixando o dia em `dueDay` (clampado 1-28 pra evitar estouro de mês). */
+function nextCycleDueDate(previousDueDateIso: string, dueDay: number): string {
+  const [year, month] = previousDueDateIso.split("-").map(Number);
+  const day = Math.min(Math.max(dueDay, 1), 28);
+  // `month` já vem 1-indexado do split; passar ele (sem -1) pro Date.UTC (0-indexado) avança exatamente 1 mês.
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
+
 /**
- * Geração preguiçosa: garante que existe uma cobrança para o ciclo do mês
- * corrente (due_date com o `due_day` cadastrado, no mês atual). Chamada ao
- * abrir a página de detalhe do cliente — assim o usuário nunca precisa criar
- * a cobrança manualmente, só editar o valor arrecadado e dar baixa.
+ * Geração preguiçosa: garante que existem cobranças para todos os ciclos já
+ * vencidos e ainda não gerados. Chamada ao abrir a página de detalhe do
+ * cliente — assim o usuário nunca precisa criar a cobrança manualmente, só
+ * editar o valor arrecadado e dar baixa.
+ *
+ * Mensalidade é pós-paga: o 1º ciclo usa exatamente `first_billing_date`
+ * (configurado no cadastro do cliente), não "mês atual + due_day" — senão um
+ * cliente cadastrado hoje ganharia uma cobrança imediata sem ter usado o
+ * serviço por um ciclo ainda. Os ciclos seguintes avançam 1 mês por vez a
+ * partir da última cobrança já gerada, e nunca são antecipados: só materializa
+ * um ciclo quando o vencimento dele já chegou.
  */
 export async function ensureCurrentBilling(client: FinancialClientRow): Promise<void> {
   const supabase = getSupabaseServerClient();
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const day = Math.min(Math.max(client.due_day, 1), 28);
-  const cycleDueDate = new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+  const todayIso = new Date().toISOString().slice(0, 10);
 
-  const { data: existing, error: selectError } = await withRetry(async () =>
+  const { data: lastBilling, error: lastError } = await withRetry(async () =>
     supabase
       .from("financial_billings")
-      .select("id")
+      .select("due_date")
       .eq("client_id", client.id)
-      .eq("due_date", cycleDueDate)
+      .order("due_date", { ascending: false })
+      .limit(1)
       .maybeSingle()
   );
 
-  if (selectError) {
-    throw new Error(`Falha ao verificar cobrança do ciclo atual: ${selectError.message}`);
+  if (lastError) {
+    throw new Error(`Falha ao verificar cobrança do ciclo atual: ${lastError.message}`);
   }
 
-  if (existing) return;
+  let nextDueDate = lastBilling
+    ? nextCycleDueDate(lastBilling.due_date, client.due_day)
+    : client.first_billing_date;
 
-  const { error: insertError } = await withRetry(async () =>
-    supabase.from("financial_billings").insert({
-      client_id: client.id,
-      due_date: cycleDueDate,
-      monthly_value: client.monthly_value,
-      commission_pct: client.commission_pct,
-      revenue_amount: 0,
-    })
-  );
+  while (nextDueDate <= todayIso) {
+    const { error: insertError } = await withRetry(async () =>
+      supabase.from("financial_billings").insert({
+        client_id: client.id,
+        due_date: nextDueDate,
+        monthly_value: client.monthly_value,
+        commission_pct: client.commission_pct,
+        revenue_amount: 0,
+      })
+    );
 
-  if (insertError) {
-    throw new Error(`Falha ao gerar cobrança do ciclo atual: ${insertError.message}`);
+    if (insertError) {
+      throw new Error(`Falha ao gerar cobrança do ciclo: ${insertError.message}`);
+    }
+
+    nextDueDate = nextCycleDueDate(nextDueDate, client.due_day);
   }
 }
 

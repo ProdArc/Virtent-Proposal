@@ -24,6 +24,7 @@ create table financial_clients (
   monthly_value numeric(12,2) not null default 0,
   commission_pct numeric(5,2) not null default 5,
   due_day smallint not null default 10, -- dia do mês em que a mensalidade vence (1-28)
+  first_billing_date date not null default current_date, -- vencimento da 1ª mensalidade (pós-pago: normalmente 1 ciclo após o cadastro)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
