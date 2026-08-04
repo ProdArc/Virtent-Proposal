@@ -28,6 +28,7 @@ interface ClientSummary {
   openCount: number;
   overdueCount: number;
   openTotal: number;
+  receivedTotal: number;
 }
 
 type BillingState = "paid" | "overdue" | "pending" | "future";
@@ -100,7 +101,12 @@ function matchesStatus(
   }
 }
 
-/** Envelope: marca que a cobrança daquele ciclo já foi enviada por e-mail. */
+/**
+ * Envelope: marca que a cobrança já foi enviada por e-mail. Aparece SÓ quando
+ * foi enviada — antes existia também em versão esmaecida pro caso "não
+ * enviada", mas em 10px a diferença entre opacidade 25% e 100% era
+ * indistinguível. Ausência do ícone é um sinal mais claro que um ícone fraco.
+ */
 function MailIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
@@ -108,6 +114,101 @@ function MailIcon({ className }: { className?: string }) {
       <path d="M2 4.5l6 4 6-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
+}
+
+function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round(
+    (Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / 86_400_000
+  );
+}
+
+const dayFmt = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+type ActionTone = "critical" | "warn" | "ready" | "done";
+
+const TONE_STYLE: Record<ActionTone, string> = {
+  critical: "bg-[#FEF2F2] border-[#F5B5B5] text-[#B91C1C]",
+  warn: "bg-[#FFF7ED] border-[#F6CE9B] text-[#B45309]",
+  ready: "bg-[#ECFDF5] border-[#A7E8CC] text-[#065F46]",
+  done: "bg-[#F9FBF8] border-[#E4E4E7] text-[#52525B]",
+};
+
+const TONE_RANK: Record<ActionTone, number> = { critical: 0, warn: 1, ready: 2, done: 3 };
+
+interface NextAction {
+  tone: ActionTone;
+  label: string;
+}
+
+/**
+ * O que precisa ser feito neste cliente, agora. Junta as pendências da
+ * implantação e do próximo ciclo em aberto e mostra a mais urgente — é a
+ * informação que transforma a listagem em ferramenta de controle, em vez de
+ * só um relatório de saldo.
+ */
+function nextAction(
+  client: FinancialClientRow,
+  billings: FinancialBillingRow[],
+  todayIso: string
+): NextAction {
+  const candidates: NextAction[] = [];
+
+  const overdue = billings
+    .filter((b) => !b.paid && b.due_date < todayIso)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+  if (overdue.length > 0) {
+    const days = daysBetween(overdue[0].due_date, todayIso);
+    candidates.push({
+      tone: "critical",
+      label:
+        `${overdue.length} ${plural(overdue.length, "cobrança atrasada", "cobranças atrasadas")}` +
+        ` · ${shortMonth(overdue[0].due_date)} há ${days} ${plural(days, "dia", "dias")}`,
+    });
+  }
+
+  if (!client.setup_paid) {
+    if (!client.email) candidates.push({ tone: "warn", label: "Implantação: cadastrar e-mail da unidade" });
+    else if (!client.setup_nfe_path) candidates.push({ tone: "warn", label: "Implantação: anexar NFe" });
+    else if (!client.setup_pix_link) candidates.push({ tone: "warn", label: "Implantação: informar link PIX" });
+    else if (!client.setup_email_sent_at)
+      candidates.push({ tone: "ready", label: "Implantação: cobrança pronta para enviar" });
+    else
+      candidates.push({
+        tone: "done",
+        label: `Implantação: cobrança enviada em ${dayFmt(client.setup_email_sent_at)} · aguardando pagamento`,
+      });
+  }
+
+  const nextOpen = billings
+    .filter((b) => !b.paid)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+
+  if (nextOpen) {
+    const m = shortMonth(nextOpen.due_date);
+    const daysToDue = daysBetween(todayIso, nextOpen.due_date);
+    const when =
+      daysToDue > 0
+        ? `vence em ${daysToDue} ${plural(daysToDue, "dia", "dias")}`
+        : daysToDue === 0
+          ? "vence hoje"
+          : "vencida";
+
+    if (!client.email) candidates.push({ tone: "warn", label: `${m}: cadastrar e-mail da unidade` });
+    else if (!nextOpen.nfe_path) candidates.push({ tone: "warn", label: `${m}: anexar NFe · ${when}` });
+    else if (!nextOpen.pix_link) candidates.push({ tone: "warn", label: `${m}: informar link PIX · ${when}` });
+    else if (!nextOpen.email_sent_at)
+      candidates.push({ tone: "ready", label: `${m}: cobrança pronta para enviar · ${when}` });
+    else
+      candidates.push({
+        tone: "done",
+        label: `${m}: cobrança enviada em ${dayFmt(nextOpen.email_sent_at)} · aguardando pagamento`,
+      });
+  }
+
+  if (candidates.length === 0) return { tone: "done", label: "Tudo em dia — nenhuma cobrança em aberto" };
+  return candidates.sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone])[0];
 }
 
 // A listagem precisa refletir status de pagamento atualizado a cada acesso.
@@ -161,11 +262,21 @@ export default async function FinanceiroPage({
   const summaries = new Map<string, ClientSummary>();
   for (const c of clients) {
     const rows = billingsByClient.get(c.id) ?? [];
-    const summary: ClientSummary = { openCount: 0, overdueCount: 0, openTotal: 0 };
+    const summary: ClientSummary = {
+      openCount: 0,
+      overdueCount: 0,
+      openTotal: 0,
+      // Recebido de verdade: mensalidades pagas + implantação, se paga.
+      receivedTotal: c.setup_paid ? c.setup_value : 0,
+    };
     for (const b of rows) {
-      if (b.paid) continue;
+      const { total_value } = calcBillingTotal(b);
+      if (b.paid) {
+        summary.receivedTotal += total_value;
+        continue;
+      }
       summary.openCount += 1;
-      summary.openTotal += calcBillingTotal(b).total_value;
+      summary.openTotal += total_value;
       if (b.due_date < todayIso) summary.overdueCount += 1;
     }
     summaries.set(c.id, summary);
@@ -267,7 +378,9 @@ export default async function FinanceiroPage({
           ))}
           <span className="inline-flex items-center gap-1.5">
             <MailIcon className="h-3 w-3 text-[#065F46]" />
-            <span className="text-[11px] text-[#71717A]">Cobrança enviada por e-mail</span>
+            <span className="text-[11px] text-[#71717A]">
+              Cobrança enviada por e-mail (sem o ícone = ainda não enviada)
+            </span>
           </span>
         </div>
 
@@ -285,6 +398,7 @@ export default async function FinanceiroPage({
             {filteredClients.map((c) => {
               const summary = summaries.get(c.id)!;
               const clientBillings = billingsByClient.get(c.id) ?? [];
+              const action = nextAction(c, clientBillings, todayIso);
               const initial = c.name.trim().charAt(0).toUpperCase() || "?";
               return (
                 <Link
@@ -302,6 +416,9 @@ export default async function FinanceiroPage({
                         <p className="text-xs text-[#A1A1AA] truncate">
                           Mensalidade {currency.format(c.monthly_value)} · comissão{" "}
                           {c.commission_pct}%
+                          {summary.receivedTotal > 0 && (
+                            <> · recebido {currency.format(summary.receivedTotal)}</>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -314,16 +431,12 @@ export default async function FinanceiroPage({
                         }`}
                         title={
                           c.setup_email_sent_at
-                            ? `Implantação ${c.setup_paid ? "paga" : "pendente"} · cobrança enviada por e-mail em ${new Date(c.setup_email_sent_at).toLocaleDateString("pt-BR")}`
+                            ? `Implantação ${c.setup_paid ? "paga" : "pendente"} · cobrança enviada por e-mail em ${dayFmt(c.setup_email_sent_at)}`
                             : `Implantação ${c.setup_paid ? "paga" : "pendente"} · cobrança ainda não enviada por e-mail`
                         }
                       >
                         Implantação {c.setup_paid ? "paga" : "pendente"}
-                        {c.setup_email_sent_at ? (
-                          <MailIcon className="h-3 w-3" />
-                        ) : (
-                          <MailIcon className="h-3 w-3 opacity-30" />
-                        )}
+                        {c.setup_email_sent_at && <MailIcon className="h-3 w-3" />}
                       </span>
                       {summary.openCount > 0 && (
                         <span
@@ -342,9 +455,19 @@ export default async function FinanceiroPage({
                     </div>
                   </div>
 
+                  {/* O que fazer neste cliente agora. */}
+                  <div
+                    className={`mt-3 sm:ml-12 inline-flex max-w-full items-center gap-2 rounded-lg border px-3 py-1.5 ${TONE_STYLE[action.tone]}`}
+                  >
+                    <span className="text-[11px] font-bold leading-none" aria-hidden="true">
+                      {action.tone === "critical" ? "!" : action.tone === "warn" ? "▲" : action.tone === "ready" ? "→" : "✓"}
+                    </span>
+                    <span className="text-[11.5px] font-semibold leading-snug">{action.label}</span>
+                  </div>
+
                   {/* Referências da mensalidade, da mais recente para a mais antiga. */}
                   {clientBillings.length > 0 && (
-                    <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 sm:pl-12">
+                    <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 sm:pl-12">
                       {clientBillings.map((b) => {
                         const state = billingState(b, todayIso);
                         const sentAt = b.email_sent_at
@@ -362,7 +485,7 @@ export default async function FinanceiroPage({
                               {STATE_GLYPH[state]}
                             </span>
                             {shortMonth(b.due_date)}
-                            <MailIcon className={`h-2.5 w-2.5 ${sentAt ? "" : "opacity-25"}`} />
+                            {sentAt && <MailIcon className="h-2.5 w-2.5" />}
                           </span>
                         );
                       })}
