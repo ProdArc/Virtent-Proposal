@@ -290,81 +290,136 @@ function monthsBetween(fromIso: string, toIso: string): number {
   return (ty - fy) * 12 + (tm - fm);
 }
 
-// Limite de ciclos atrasados gerados de uma vez. Sem isso, um cliente
-// cadastrado com `first_billing_date` de anos atrás (ex: migrando um cliente
-// antigo pro sistema) gera uma linha de cobrança pra CADA mês perdido — já
-// aconteceu de gerar 400+ cobranças retroativas numa única chamada. Qualquer
-// lacuna maior que isso é pulada silenciosamente: o histórico anterior a
-// esse ponto não é de interesse pra cobrança ativa.
-const MAX_BACKFILL_CYCLES = 3;
+// Teto de ciclos mantidos por cliente. Serve só como proteção contra uma
+// `first_billing_date` digitada errada (ex: ano 1900) virar milhares de
+// linhas — 3 anos cobre com folga o caso real de cadastrar um cliente antigo
+// com histórico. Se a data for mais antiga que isso, os ciclos anteriores a
+// essa janela simplesmente não são gerados.
+const MAX_CYCLES = 36;
+
+/** Uma cobrança "vazia" (sem nada preenchido pelo usuário) pode ser descartada com segurança na deduplicação. */
+function hasUserData(b: {
+  paid: boolean;
+  revenue_amount: number;
+  nfe_path: string | null;
+  comprovante_path: string | null;
+  pix_link: string | null;
+  email_sent_at: string | null;
+}): boolean {
+  return (
+    b.paid ||
+    Number(b.revenue_amount) > 0 ||
+    Boolean(b.nfe_path) ||
+    Boolean(b.comprovante_path) ||
+    Boolean(b.pix_link) ||
+    Boolean(b.email_sent_at)
+  );
+}
 
 /**
- * Geração preguiçosa: garante que existem cobranças pros ciclos já vencidos
- * (até `MAX_BACKFILL_CYCLES` atrasados) e ainda não gerados, MAIS uma única
- * referência futura (o próximo ciclo, ainda não vencido) — pra aparecer na
- * lista com antecedência e já dar pra anexar comprovante/NFe antes do
- * vencimento chegar. Chamada ao abrir a página de detalhe do cliente.
+ * Geração preguiçosa: garante que existe exatamente uma cobrança pra cada
+ * ciclo mensal entre `first_billing_date` e hoje, MAIS uma referência futura
+ * (o próximo ciclo, ainda não vencido) — pra aparecer na lista com
+ * antecedência e já dar pra anexar comprovante/NFe antes do vencimento
+ * chegar. Chamada ao abrir a página de detalhe do cliente. Cadastrar um
+ * cliente antigo (com `first_billing_date` meses atrás) gera todo o histórico
+ * de uma vez, pra poder dar baixa nos meses já pagos.
  *
  * Mensalidade é pós-paga: o 1º ciclo usa exatamente `first_billing_date`
  * (configurado no cadastro do cliente), não "mês atual + due_day" — senão um
  * cliente cadastrado hoje ganharia uma cobrança imediata sem ter usado o
- * serviço por um ciclo ainda. Os ciclos seguintes avançam 1 mês por vez a
- * partir da última cobrança já gerada. Nunca existe mais de uma referência
- * futura por vez: o loop para assim que a última cobrança gerada (ou já
- * existente) ainda não venceu.
+ * serviço por um ciclo ainda.
+ *
+ * Idempotente e seguro sob concorrência: calcula todos os ciclos alvo de uma
+ * vez, insere só os que faltam num único INSERT em lote, e no fim remove
+ * duplicatas. Isso importa porque em serverless várias invocações rodam em
+ * paralelo (prefetch do Next.js, abas duplicadas, F5 rápido) e um
+ * "SELECT, se não existe INSERT" ingênuo deixa todas decidirem "não existe"
+ * ao mesmo tempo — foi o que gerou milhares de linhas repetidas. A constraint
+ * UNIQUE(client_id, due_date) no banco é a trava definitiva (ver
+ * supabase/migrations/006), mas esta função não depende dela pra se manter
+ * consistente.
  */
 export async function ensureCurrentBilling(client: FinancialClientRow): Promise<void> {
   const supabase = getSupabaseServerClient();
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  // Cap duro de iterações: MAX_BACKFILL_CYCLES + 1 (futuro) já cobre o caso
-  // legítimo mais longo; qualquer coisa além disso é sinal de que algo saiu
-  // do esperado (não deveria nunca ser atingido na prática).
-  for (let i = 0; i < MAX_BACKFILL_CYCLES + 2; i++) {
-    const { data: lastBilling, error: lastError } = await withRetry(async () =>
-      supabase
-        .from("financial_billings")
-        .select("due_date")
-        .eq("client_id", client.id)
-        .order("due_date", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    );
+  // 1. Ciclos que deveriam existir: do primeiro vencimento até o primeiro que
+  //    ainda não venceu (inclusive).
+  const targetDueDates: string[] = [];
+  let cursor = client.first_billing_date;
+  const overshootMonths = monthsBetween(cursor, todayIso) - (MAX_CYCLES - 1);
+  if (overshootMonths > 0) {
+    cursor = cycleDueDatePlusMonths(cursor, overshootMonths, client.due_day);
+  }
+  for (let i = 0; i < MAX_CYCLES; i++) {
+    targetDueDates.push(cursor);
+    if (cursor > todayIso) break;
+    cursor = nextCycleDueDate(cursor, client.due_day);
+  }
 
-    if (lastError) {
-      throw new Error(`Falha ao verificar cobrança do ciclo atual: ${lastError.message}`);
-    }
+  // 2. O que já existe.
+  const { data: existing, error: selectError } = await withRetry(async () =>
+    supabase
+      .from("financial_billings")
+      .select("id, due_date, paid, revenue_amount, nfe_path, comprovante_path, pix_link, email_sent_at")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: true })
+  );
 
-    if (lastBilling && lastBilling.due_date > todayIso) break;
+  if (selectError) {
+    throw new Error(`Falha ao verificar cobranças do cliente: ${selectError.message}`);
+  }
 
-    let nextDueDate = lastBilling
-      ? nextCycleDueDate(lastBilling.due_date, client.due_day)
-      : client.first_billing_date;
+  const existingRows = existing ?? [];
+  const existingDates = new Set(existingRows.map((r) => r.due_date));
 
-    const gapMonths = monthsBetween(nextDueDate, todayIso);
-    if (gapMonths > MAX_BACKFILL_CYCLES) {
-      nextDueDate = cycleDueDatePlusMonths(nextDueDate, gapMonths - MAX_BACKFILL_CYCLES, client.due_day);
-    }
-
+  // 3. Insere o que falta, tudo de uma vez (uma ida ao banco, não uma por ciclo).
+  const missing = targetDueDates.filter((d) => !existingDates.has(d));
+  if (missing.length > 0) {
     const { error: insertError } = await withRetry(async () =>
-      supabase.from("financial_billings").insert({
-        client_id: client.id,
-        due_date: nextDueDate,
-        monthly_value: client.monthly_value,
-        commission_pct: client.commission_pct,
-        revenue_amount: 0,
-      })
+      supabase.from("financial_billings").insert(
+        missing.map((due_date) => ({
+          client_id: client.id,
+          due_date,
+          monthly_value: client.monthly_value,
+          commission_pct: client.commission_pct,
+          revenue_amount: 0,
+        }))
+      )
     );
 
-    if (insertError) {
-      // 23505 = unique_violation (constraint em financial_billings sobre
-      // client_id+due_date) — outra chamada concorrente (2 abas, prefetch
-      // duplicado etc.) já criou esse ciclo primeiro. Nada a fazer, não é erro.
-      if (insertError.code === "23505") break;
-      throw new Error(`Falha ao gerar cobrança do ciclo: ${insertError.message}`);
+    // 23505 = unique_violation: outra invocação concorrente criou os mesmos
+    // ciclos primeiro. É o resultado esperado, não um erro.
+    if (insertError && insertError.code !== "23505") {
+      throw new Error(`Falha ao gerar cobranças do ciclo: ${insertError.message}`);
     }
+  }
 
-    if (nextDueDate > todayIso) break;
+  // 4. Auto-cura: remove duplicatas do mesmo ciclo que tenham escapado (por
+  //    corrida antes da constraint existir, ou por dados legados). Só apaga
+  //    linhas vazias — nunca uma com baixa, anexo, PIX ou e-mail enviado.
+  const byDate = new Map<string, typeof existingRows>();
+  for (const row of existingRows) {
+    byDate.set(row.due_date, [...(byDate.get(row.due_date) ?? []), row]);
+  }
+
+  const idsToDelete: string[] = [];
+  for (const rows of byDate.values()) {
+    if (rows.length < 2) continue;
+    // Mantém a que tem dado do usuário; se nenhuma tiver, mantém a mais antiga.
+    const keeper = rows.find(hasUserData) ?? rows[0];
+    idsToDelete.push(...rows.filter((r) => r.id !== keeper.id && !hasUserData(r)).map((r) => r.id));
+  }
+
+  if (idsToDelete.length > 0) {
+    const { error: deleteError } = await withRetry(async () =>
+      supabase.from("financial_billings").delete().in("id", idsToDelete)
+    );
+
+    if (deleteError) {
+      throw new Error(`Falha ao remover cobranças duplicadas: ${deleteError.message}`);
+    }
   }
 }
 
