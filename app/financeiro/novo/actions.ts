@@ -1,8 +1,7 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isValidBasicAuth } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { createFinancialClient, parseDecimalInput } from "@/lib/financial";
 
 export interface NewFinancialClientState {
@@ -13,9 +12,9 @@ export async function createFinancialClientAction(
   _prevState: NewFinancialClientState,
   formData: FormData
 ): Promise<NewFinancialClientState> {
-  const authHeader = (await headers()).get("authorization");
-  if (!isValidBasicAuth(authHeader)) {
-    return { error: "Não autorizado." };
+  const authError = await requireSession();
+  if (authError) {
+    return { error: authError };
   }
 
   const name = String(formData.get("name") || "").trim();

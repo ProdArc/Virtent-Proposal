@@ -5,9 +5,10 @@ import {
   type ClientBillingSummary,
   type FinancialClientRow,
 } from "@/lib/financial";
+import { LogoutButton } from "@/components/ui/LogoutButton";
 
-// Ferramenta interna de controle financeiro — mesma paleta e proteção (Basic
-// Auth no proxy.ts) que /propostas.
+// Ferramenta interna de controle financeiro — mesma paleta e proteção (sessão
+// via cookie, ver proxy.ts e lib/auth.ts) que /propostas.
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -44,12 +45,15 @@ export default async function FinanceiroPage() {
   return (
     <main className="min-h-screen bg-[#F9FBF8] py-12 sm:py-16 px-6">
       <div className="max-w-4xl mx-auto">
-        <Link
-          href="/propostas"
-          className="text-xs text-[#71717A] hover:text-[#18181B] transition-colors"
-        >
-          ← Propostas
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            href="/painel"
+            className="text-xs text-[#71717A] hover:text-[#18181B] transition-colors"
+          >
+            ← Painel
+          </Link>
+          <LogoutButton />
+        </div>
         <div className="flex items-start justify-between gap-4 mt-4 mb-1">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#065F46] mb-3">

@@ -1,34 +1,32 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { isValidBasicAuth } from "@/lib/auth";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
-// Gate simples de Basic Auth só para as áreas internas (propostas e financeiro).
-// "middleware.ts" foi renomeado para "proxy.ts" no Next 16 — ver
-// node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md.
-
-function unauthorized() {
-  return new Response("Autenticação necessária.", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Propostas Virtent"' },
-  });
-}
+// Gate de sessão (cookie assinado) para as áreas internas (propostas e
+// financeiro) e o painel. "middleware.ts" foi renomeado para "proxy.ts" no
+// Next 16 — ver node_modules/next/dist/docs/.../proxy.md. Proxy roda em
+// runtime Node.js por padrão nessa versão, por isso lib/auth.ts pode usar o
+// módulo "crypto" nativo direto aqui, sem precisar de Web Crypto/Edge.
 
 export function proxy(request: NextRequest) {
-  // Fail closed: sem senha configurada, não libera a listagem por padrão.
-  if (!process.env.ADMIN_PASSWORD) {
+  // Fail closed: sem as env vars configuradas, não libera acesso por padrão.
+  if (!process.env.AUTH_SECRET || (!process.env.ADMIN_PASSWORD && !process.env.LUCAS_PASSWORD)) {
     return new Response(
-      "ADMIN_PASSWORD não configurada no ambiente — veja .env.local.example.",
+      "AUTH_SECRET e ao menos uma senha (ADMIN_PASSWORD/LUCAS_PASSWORD) precisam estar configuradas — veja .env.local.example.",
       { status: 500 }
     );
   }
 
-  if (isValidBasicAuth(request.headers.get("authorization"))) {
+  const user = verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value);
+  if (user) {
     return NextResponse.next();
   }
 
-  return unauthorized();
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", request.nextUrl.pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/propostas", "/propostas/:path*", "/financeiro", "/financeiro/:path*"],
+  matcher: ["/painel", "/propostas", "/propostas/:path*", "/financeiro", "/financeiro/:path*"],
 };

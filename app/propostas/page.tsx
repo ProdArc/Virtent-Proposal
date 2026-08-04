@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { listProposals, type ProposalListItem } from "@/lib/proposals";
+import { LogoutButton } from "@/components/ui/LogoutButton";
 
 // Ferramenta interna de consulta — sem os efeitos/animações da proposta em si,
 // só a paleta base do site pra consistência visual mínima. Acesso protegido
-// por Basic Auth no proxy.ts (ADMIN_PASSWORD), não nesta página.
+// por sessão via cookie no proxy.ts (ver lib/auth.ts), não nesta página.
 
 const STATUS_LABEL: Record<string, string> = {
   rascunho: "Rascunho",
@@ -49,7 +50,16 @@ export default async function PropostasPage() {
   return (
     <main className="min-h-screen bg-[#F9FBF8] py-12 sm:py-16 px-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-start justify-between gap-4 mb-1">
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            href="/painel"
+            className="text-xs text-[#71717A] hover:text-[#18181B] transition-colors"
+          >
+            ← Painel
+          </Link>
+          <LogoutButton />
+        </div>
+        <div className="flex items-start justify-between gap-4 mt-4 mb-1">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#065F46] mb-3">
               Virtent
@@ -59,12 +69,6 @@ export default async function PropostasPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/financeiro"
-              className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
-            >
-              Financeiro
-            </Link>
             <Link
               href="/propostas/nova"
               className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-[#065F46] text-white hover:bg-[#047857] transition-colors"

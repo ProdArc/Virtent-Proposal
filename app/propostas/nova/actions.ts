@@ -1,7 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
-import { isValidBasicAuth } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { createProposal } from "@/lib/proposals";
 
 export interface NewProposalState {
@@ -15,9 +14,9 @@ export async function createProposalAction(
 ): Promise<NewProposalState> {
   // Defesa em profundidade — o proxy.ts já protege /propostas/:path*, mas a
   // doc do Next recomenda não confiar só nisso pra Server Actions.
-  const authHeader = (await headers()).get("authorization");
-  if (!isValidBasicAuth(authHeader)) {
-    return { error: "Não autorizado." };
+  const authError = await requireSession();
+  if (authError) {
+    return { error: authError };
   }
 
   const clientName = String(formData.get("clientName") || "").trim();

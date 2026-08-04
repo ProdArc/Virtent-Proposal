@@ -1,9 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { isValidBasicAuth } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import {
   deleteBilling,
   deleteBillingComprovante,
@@ -28,9 +27,7 @@ import {
 import { sendBillingEmail, sendSetupEmail } from "@/lib/email";
 
 async function assertAuthorized(): Promise<string | null> {
-  const authHeader = (await headers()).get("authorization");
-  if (!isValidBasicAuth(authHeader)) return "Não autorizado.";
-  return null;
+  return requireSession();
 }
 
 export interface FormActionState {
