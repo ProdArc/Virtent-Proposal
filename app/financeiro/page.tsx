@@ -104,12 +104,20 @@ export default async function FinanceiroPage({
               Controle financeiro
             </h1>
           </div>
-          <Link
-            href="/financeiro/novo"
-            className="shrink-0 inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-[#065F46] text-white hover:bg-[#047857] transition-colors"
-          >
-            + Novo cliente
-          </Link>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/financeiro/dashboard"
+              className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/financeiro/novo"
+              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-[#065F46] text-white hover:bg-[#047857] transition-colors"
+            >
+              + Novo cliente
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

@@ -168,6 +168,21 @@ export async function listBillingsForClient(clientId: string): Promise<Financial
   return data ?? [];
 }
 
+/** Todas as cobranças de todos os clientes — base de agregação do dashboard (/financeiro/dashboard). */
+export async function listAllBillings(): Promise<FinancialBillingRow[]> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("financial_billings")
+    .select("*")
+    .order("due_date", { ascending: true });
+
+  if (error) {
+    throw new Error(`Falha ao listar cobranças: ${error.message}`);
+  }
+
+  return data ?? [];
+}
+
 export async function getBillingById(id: string): Promise<FinancialBillingRow | null> {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase

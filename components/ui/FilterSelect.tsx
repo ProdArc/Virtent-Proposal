@@ -1,30 +1,43 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-/** Select que navega sozinho ao trocar de valor — filtro server-side via query string, sem estado no client. */
+/**
+ * Select que navega sozinho ao trocar de valor — filtro server-side via query
+ * string, sem estado no client. Preserva os outros filtros já ativos na URL,
+ * pra combinar vários (ex: período + cliente) sem um zerar o outro.
+ */
 export function FilterSelect({
   name,
+  label,
   defaultValue,
   options,
   basePath,
 }: {
   name: string;
+  label?: string;
   defaultValue: string;
   options: { value: string; label: string }[];
   basePath: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  return (
+  const select = (
     <select
       name={name}
       defaultValue={defaultValue}
       onChange={(e) => {
-        const value = e.target.value;
-        router.push(value ? `${basePath}?${name}=${encodeURIComponent(value)}` : basePath);
+        const params = new URLSearchParams(searchParams.toString());
+        if (e.target.value) {
+          params.set(name, e.target.value);
+        } else {
+          params.delete(name);
+        }
+        const query = params.toString();
+        router.push(query ? `${basePath}?${query}` : basePath);
       }}
-      className="rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-sm text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+      className="w-full rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-sm text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>
@@ -32,5 +45,14 @@ export function FilterSelect({
         </option>
       ))}
     </select>
+  );
+
+  if (!label) return select;
+
+  return (
+    <label className="block">
+      <span className="block text-[11px] font-semibold text-[#52525B] mb-1">{label}</span>
+      {select}
+    </label>
   );
 }

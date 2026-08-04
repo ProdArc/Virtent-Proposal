@@ -426,39 +426,47 @@ export default async function FinanceiroClientPage({
         <EditClientForm client={client} />
 
         {/* Implantação */}
-        <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 mt-8 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B] mb-4">
-            Implantação
-          </p>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-lg font-bold text-[#18181B] tabular-nums">
-                {currency.format(client.setup_value)}
-              </p>
-              {client.setup_due_date && (
-                <p className="text-xs text-[#A1A1AA]">Vencimento: {dateFmt(client.setup_due_date)}</p>
-              )}
+        <details
+          open={!client.setup_paid}
+          className="group rounded-2xl border border-[#E4E4E7] bg-white mt-8 shadow-sm overflow-hidden"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 sm:p-8 select-none hover:bg-[#F9FBF8] transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <ChevronIcon />
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B] mb-1">
+                  Implantação
+                </p>
+                <p className="text-lg font-bold text-[#18181B] tabular-nums">
+                  {currency.format(client.setup_value)}
+                </p>
+                {client.setup_due_date && (
+                  <p className="text-xs text-[#A1A1AA]">
+                    Vencimento: {dateFmt(client.setup_due_date)}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
-                  client.setup_paid ? "bg-[#ECFDF5] text-[#065F46]" : "bg-[#FFF7ED] text-[#B45309]"
-                }`}
+            <span
+              className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                client.setup_paid ? "bg-[#ECFDF5] text-[#065F46]" : "bg-[#FFF7ED] text-[#B45309]"
+              }`}
+            >
+              {client.setup_paid ? "Paga" : "Pendente"}
+            </span>
+          </summary>
+
+          <div className="px-6 sm:px-8 pb-6 sm:pb-8">
+            <form action={toggleSetupPaidAction} className="border-t border-[#E4E4E7] pt-4">
+              <input type="hidden" name="id" value={client.id} />
+              <input type="hidden" name="paid" value={(!client.setup_paid).toString()} />
+              <SubmitButton
+                pendingLabel="Salvando..."
+                className="text-sm font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
               >
-                {client.setup_paid ? "Paga" : "Pendente"}
-              </span>
-              <form action={toggleSetupPaidAction}>
-                <input type="hidden" name="id" value={client.id} />
-                <input type="hidden" name="paid" value={(!client.setup_paid).toString()} />
-                <SubmitButton
-                  pendingLabel="Salvando..."
-                  className="text-sm font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
-                >
-                  {client.setup_paid ? "Desfazer baixa" : "Dar baixa"}
-                </SubmitButton>
-              </form>
-            </div>
-          </div>
+                {client.setup_paid ? "Desfazer baixa" : "Dar baixa"}
+              </SubmitButton>
+            </form>
 
           <div className="mt-4 rounded-xl bg-[#F9FBF8] border border-[#E4E4E7] p-4">
             <p className="text-[11px] uppercase tracking-[0.1em] font-semibold text-[#52525B] mb-3">
@@ -597,7 +605,8 @@ export default async function FinanceiroClientPage({
               />
             </div>
           </div>
-        </section>
+          </div>
+        </details>
 
         {/* Cobranças mensais */}
         <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 mt-6 shadow-sm">

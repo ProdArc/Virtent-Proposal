@@ -119,6 +119,21 @@ export default async function PainelPage() {
             </div>
           </Link>
         </div>
+
+        <Link
+          href="/financeiro/dashboard"
+          className="group mt-5 flex items-center justify-between gap-4 rounded-2xl border border-[#E4E4E7] bg-white px-6 py-5 hover:border-[#065F46]/40 hover:shadow-sm transition-all duration-150"
+        >
+          <div>
+            <h2 className="text-sm font-bold text-[#18181B] mb-0.5">Dashboard financeiro</h2>
+            <p className="text-sm text-[#71717A]">
+              Evolução mensal, atrasos e comissão, com filtros por período e cliente.
+            </p>
+          </div>
+          <span className="shrink-0 text-sm font-semibold text-[#065F46] group-hover:text-[#047857] transition-colors">
+            Abrir →
+          </span>
+        </Link>
       </div>
     </main>
   );
