@@ -10,14 +10,12 @@ import { LogoutButton } from "@/components/ui/LogoutButton";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 
 // Paleta das séries validada com scripts/validate_palette.js (skill dataviz):
-// ΔE 27.6 visão normal / 9.2 CVD no par adjacente. Verde = recebido e laranja
-// = em aberto mantêm a mesma semântica de cor já usada no resto do app. O
-// contraste do verde fica em 2.74:1 (abaixo de 3:1), então as barras SEMPRE
-// levam rótulo visível + tabela de dados — é o alívio exigido pelo validador.
-const SERIES_RECEIVED = "#1baf7a";
-const SERIES_OPEN = "#eb6834";
+// ΔE 27.6 visão normal / 9.2 CVD no par adjacente. O contraste do verde fica
+// em 2.74:1 (abaixo de 3:1), então as barras SEMPRE levam rótulo visível +
+// tabela de dados — é o alívio exigido pelo validador.
+const SERIES_SETUP = "#1baf7a";
+const SERIES_MONTHLY = "#eb6834";
 
-// Altura da área do gráfico e da barra mais alta, em pixel.
 const PLOT_HEIGHT_PX = 190;
 const BAR_MAX_PX = 165;
 
@@ -32,25 +30,21 @@ const monthShortFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const PERIOD_OPTIONS = [
-  { value: "6", label: "Últimos 6 meses" },
-  { value: "12", label: "Últimos 12 meses" },
-  { value: "all", label: "Todo o período" },
-];
-
 const STATUS_OPTIONS = [
-  { value: "", label: "Todas as cobranças" },
+  { value: "", label: "Tudo (cobrado)" },
+  { value: "paid", label: "Somente pago (recebido)" },
   { value: "open", label: "Somente em aberto" },
-  { value: "paid", label: "Somente pagas" },
-  { value: "overdue", label: "Somente atrasadas" },
+  { value: "overdue", label: "Somente atrasado" },
 ];
 
-/** Primeiro dia do mês, N meses atrás — corte do filtro de período. */
-function monthsAgoIso(months: number): string {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth() - months + 1, 1))
-    .toISOString()
-    .slice(0, 10);
+/**
+ * Data em que o cliente entrou: o vencimento da implantação, que é quando a
+ * unidade de fato começou. Cai pro 1º vencimento da mensalidade quando a
+ * implantação não tem data — nunca usa `created_at`, senão todo cliente
+ * antigo migrado pro sistema apareceria como entrada do mês do cadastro.
+ */
+function clientEntryDate(c: FinancialClientRow): string {
+  return c.setup_due_date ?? c.first_billing_date;
 }
 
 function monthKey(iso: string): string {
@@ -66,10 +60,9 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; status?: string; client?: string }>;
+  searchParams: Promise<{ month?: string; status?: string; client?: string }>;
 }) {
-  const { period, status, client } = await searchParams;
-  const activePeriod = PERIOD_OPTIONS.some((o) => o.value === period) ? period! : "12";
+  const { month, status, client } = await searchParams;
   const activeStatus = status ?? "";
   const activeClient = client ?? "";
 
@@ -102,69 +95,118 @@ export default async function DashboardPage({
   const todayIso = new Date().toISOString().slice(0, 10);
   const clientsById = new Map(clients.map((c) => [c.id, c]));
 
-  const cutoffIso = activePeriod === "all" ? null : monthsAgoIso(Number(activePeriod));
-  const filtered = billings.filter((b) => {
-    if (cutoffIso && b.due_date < cutoffIso) return false;
-    if (activeClient && b.client_id !== activeClient) return false;
-    if (activeStatus === "open" && b.paid) return false;
-    if (activeStatus === "paid" && !b.paid) return false;
-    if (activeStatus === "overdue" && (b.paid || b.due_date >= todayIso)) return false;
-    return true;
-  });
+  // Meses de referência disponíveis: união das mensalidades e das entradas.
+  const monthSet = new Set<string>();
+  for (const b of billings) monthSet.add(monthKey(b.due_date));
+  for (const c of clients) monthSet.add(monthKey(clientEntryDate(c)));
+  const availableMonths = [...monthSet].sort((a, b) => b.localeCompare(a));
+  const activeMonth = month && monthSet.has(month) ? month : "";
 
-  // --- Números-síntese ---
-  let openTotal = 0;
-  let receivedTotal = 0;
-  let overdueTotal = 0;
-  let overdueCount = 0;
-  let commissionTotal = 0;
-
-  for (const b of filtered) {
-    const { total_value, commission_value } = calcBillingTotal(b);
-    commissionTotal += commission_value;
-    if (b.paid) {
-      receivedTotal += total_value;
-    } else {
-      openTotal += total_value;
-      if (b.due_date < todayIso) {
-        overdueTotal += total_value;
-        overdueCount += 1;
-      }
-    }
-  }
-
-  // --- Série mensal (recebido x em aberto) ---
-  const byMonth = new Map<string, { received: number; open: number }>();
-  for (const b of filtered) {
-    const key = monthKey(b.due_date);
-    const bucket = byMonth.get(key) ?? { received: 0, open: 0 };
-    const { total_value } = calcBillingTotal(b);
-    if (b.paid) bucket.received += total_value;
-    else bucket.open += total_value;
-    byMonth.set(key, bucket);
-  }
-  const months = [...byMonth.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, v]) => ({ key, ...v, total: v.received + v.open }));
-  const maxMonthTotal = Math.max(1, ...months.map((m) => m.total));
-
-  // --- Ranking por cliente (valor em aberto) ---
-  const byClient = new Map<string, number>();
-  for (const b of filtered) {
-    if (b.paid) continue;
-    const { total_value } = calcBillingTotal(b);
-    byClient.set(b.client_id, (byClient.get(b.client_id) ?? 0) + total_value);
-  }
-  const ranking = [...byClient.entries()]
-    .map(([id, total]) => ({ id, name: clientsById.get(id)?.name ?? "Cliente removido", total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 8);
-  const maxRanking = Math.max(1, ...ranking.map((r) => r.total));
-
-  const clientOptions = [
+  const MONTH_OPTIONS = [
+    { value: "", label: "Todo o período" },
+    ...availableMonths.map((m) => ({ value: m, label: monthLabel(m, monthLongFmt) })),
+  ];
+  const CLIENT_OPTIONS = [
     { value: "", label: "Todos os clientes" },
     ...clients.map((c) => ({ value: c.id, label: c.name })),
   ];
+
+  /** Aplica o filtro de status a um item cobrado (implantação ou mensalidade). */
+  function matchesStatus(paid: boolean, dueDate: string): boolean {
+    if (activeStatus === "paid") return paid;
+    if (activeStatus === "open") return !paid;
+    if (activeStatus === "overdue") return !paid && dueDate < todayIso;
+    return true;
+  }
+
+  const inClientFilter = (id: string) => !activeClient || id === activeClient;
+
+  // --- Faturamento por cliente (respeita todos os filtros) ---
+  interface ClientRevenue {
+    id: string;
+    name: string;
+    setup: number;
+    monthly: number;
+    commission: number;
+  }
+  const revenueByClient = new Map<string, ClientRevenue>();
+  const ensureRow = (id: string): ClientRevenue => {
+    const existing = revenueByClient.get(id);
+    if (existing) return existing;
+    const row: ClientRevenue = {
+      id,
+      name: clientsById.get(id)?.name ?? "Cliente removido",
+      setup: 0,
+      monthly: 0,
+      commission: 0,
+    };
+    revenueByClient.set(id, row);
+    return row;
+  };
+
+  for (const c of clients) {
+    if (!inClientFilter(c.id)) continue;
+    const entry = clientEntryDate(c);
+    if (activeMonth && monthKey(entry) !== activeMonth) continue;
+    if (!matchesStatus(c.setup_paid, entry)) continue;
+    ensureRow(c.id).setup += c.setup_value;
+  }
+
+  for (const b of billings) {
+    if (!inClientFilter(b.client_id)) continue;
+    if (activeMonth && monthKey(b.due_date) !== activeMonth) continue;
+    if (!matchesStatus(b.paid, b.due_date)) continue;
+    const { total_value, commission_value } = calcBillingTotal(b);
+    const row = ensureRow(b.client_id);
+    row.monthly += total_value;
+    row.commission += commission_value;
+  }
+
+  const clientRows = [...revenueByClient.values()]
+    .map((r) => ({ ...r, total: r.setup + r.monthly }))
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const setupTotal = clientRows.reduce((s, r) => s + r.setup, 0);
+  const monthlyTotal = clientRows.reduce((s, r) => s + r.monthly, 0);
+  const commissionTotal = clientRows.reduce((s, r) => s + r.commission, 0);
+  const grandTotal = setupTotal + monthlyTotal;
+
+  // --- Clientes que entraram no mês de referência ---
+  const enteredClients = clients.filter(
+    (c) =>
+      inClientFilter(c.id) && (!activeMonth || monthKey(clientEntryDate(c)) === activeMonth)
+  );
+
+  // --- Série mensal: implantação x mensalidade ---
+  // Ignora o filtro de mês de propósito: o gráfico É a visão do tempo todo; o
+  // mês selecionado aparece destacado em vez de virar uma barra só.
+  const byMonth = new Map<string, { setup: number; monthly: number }>();
+  const bucket = (key: string) => {
+    const b = byMonth.get(key) ?? { setup: 0, monthly: 0 };
+    byMonth.set(key, b);
+    return b;
+  };
+  for (const c of clients) {
+    if (!inClientFilter(c.id)) continue;
+    const entry = clientEntryDate(c);
+    if (!matchesStatus(c.setup_paid, entry)) continue;
+    bucket(monthKey(entry)).setup += c.setup_value;
+  }
+  for (const b of billings) {
+    if (!inClientFilter(b.client_id)) continue;
+    if (!matchesStatus(b.paid, b.due_date)) continue;
+    bucket(monthKey(b.due_date)).monthly += calcBillingTotal(b).total_value;
+  }
+  const months = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, v]) => ({ key, ...v, total: v.setup + v.monthly }))
+    .filter((m) => m.total > 0);
+  const maxMonthTotal = Math.max(1, ...months.map((m) => m.total));
+
+  const scopeLabel = activeMonth ? monthLabel(activeMonth, monthLongFmt) : "todo o período";
+  const statusLabel =
+    STATUS_OPTIONS.find((o) => o.value === activeStatus)?.label.toLowerCase() ?? "";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F9FBF8] py-12 sm:py-16 px-6">
@@ -198,20 +240,19 @@ export default async function DashboardPage({
           </Link>
         </div>
 
-        {/* Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 rounded-2xl border border-[#E4E4E7] bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 rounded-2xl border border-[#E4E4E7] bg-white p-4 shadow-sm">
           <FilterSelect
-            name="period"
-            label="Período"
-            defaultValue={activePeriod}
-            options={PERIOD_OPTIONS}
+            name="month"
+            label="Mês de referência"
+            defaultValue={activeMonth}
+            options={MONTH_OPTIONS}
             basePath="/financeiro/dashboard"
           />
           <FilterSelect
             name="client"
             label="Cliente"
             defaultValue={activeClient}
-            options={clientOptions}
+            options={CLIENT_OPTIONS}
             basePath="/financeiro/dashboard"
           />
           <FilterSelect
@@ -222,36 +263,54 @@ export default async function DashboardPage({
             basePath="/financeiro/dashboard"
           />
         </div>
+        <p className="text-xs text-[#A1A1AA] mb-6 px-1">
+          Mostrando <strong className="text-[#52525B]">{statusLabel}</strong> de{" "}
+          <strong className="text-[#52525B]">{scopeLabel}</strong>. A implantação entra no mês do seu
+          vencimento; a mensalidade, no mês da referência.
+        </p>
 
-        {/* Números-síntese */}
+        {/* Índices macro */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">Em aberto</p>
-            <p className="text-lg font-bold text-[#18181B] tabular-nums">
-              {currency.format(openTotal)}
+            <p className="text-[11px] font-semibold text-[#52525B] mb-1">
+              {activeMonth ? "Clientes que entraram" : "Clientes"}
+            </p>
+            <p className="text-lg font-bold text-[#18181B] tabular-nums">{enteredClients.length}</p>
+            <p className="text-[11px] text-[#A1A1AA]">
+              {activeMonth ? monthLabel(activeMonth, monthShortFmt) : "no total"}
             </p>
           </div>
           <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">Recebido</p>
+            <p className="text-[11px] font-semibold text-[#52525B] mb-1">
+              <span
+                className="inline-block h-2 w-2 rounded-sm mr-1.5 align-middle"
+                style={{ backgroundColor: SERIES_SETUP }}
+              />
+              Implantação
+            </p>
             <p className="text-lg font-bold text-[#18181B] tabular-nums">
-              {currency.format(receivedTotal)}
+              {currency.format(setupTotal)}
             </p>
           </div>
           <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">Atrasado</p>
-            <p
-              className={`text-lg font-bold tabular-nums ${overdueTotal > 0 ? "text-[#B91C1C]" : "text-[#18181B]"}`}
-            >
-              {currency.format(overdueTotal)}
+            <p className="text-[11px] font-semibold text-[#52525B] mb-1">
+              <span
+                className="inline-block h-2 w-2 rounded-sm mr-1.5 align-middle"
+                style={{ backgroundColor: SERIES_MONTHLY }}
+              />
+              Mensalidades
+            </p>
+            <p className="text-lg font-bold text-[#18181B] tabular-nums">
+              {currency.format(monthlyTotal)}
             </p>
             <p className="text-[11px] text-[#A1A1AA]">
-              {overdueCount} cobrança{overdueCount === 1 ? "" : "s"}
+              inclui {currency.format(commissionTotal)} de comissão
             </p>
           </div>
-          <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">Comissão no período</p>
+          <div className="rounded-xl border border-[#065F46]/25 bg-[#F0FAF6] px-4 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold text-[#065F46] mb-1">Total faturado</p>
             <p className="text-lg font-bold text-[#18181B] tabular-nums">
-              {currency.format(commissionTotal)}
+              {currency.format(grandTotal)}
             </p>
           </div>
         </div>
@@ -260,42 +319,43 @@ export default async function DashboardPage({
         <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 shadow-sm mb-6">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
             <div>
-              <h2 className="text-sm font-bold text-[#18181B]">Evolução mensal</h2>
-              <p className="text-xs text-[#A1A1AA]">Total cobrado por mês de referência</p>
+              <h2 className="text-sm font-bold text-[#18181B]">Faturamento por mês</h2>
+              <p className="text-xs text-[#A1A1AA]">
+                Todos os meses{activeMonth ? " — o mês filtrado aparece destacado" : ""}
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <span
-                  className="h-2.5 w-2.5 rounded-sm"
-                  style={{ backgroundColor: SERIES_RECEIVED }}
-                />
-                <span className="text-xs text-[#52525B]">Recebido</span>
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: SERIES_SETUP }} />
+                <span className="text-xs text-[#52525B]">Implantação</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: SERIES_OPEN }} />
-                <span className="text-xs text-[#52525B]">Em aberto</span>
+                <span
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: SERIES_MONTHLY }}
+                />
+                <span className="text-xs text-[#52525B]">Mensalidades</span>
               </div>
             </div>
           </div>
 
           {months.length === 0 ? (
-            <p className="text-sm text-[#71717A]">Nenhuma cobrança no período selecionado.</p>
+            <p className="text-sm text-[#71717A]">Nenhum faturamento no filtro selecionado.</p>
           ) : (
             <>
-              {/* pt-20/px-12 dão folga pro tooltip (centralizado acima da coluna)
-                  caber dentro da área rolável — sem isso o overflow-x-auto corta
-                  ele em cima e nas laterais das colunas das pontas. */}
+              {/* pt-20/px-12 dão folga pro tooltip caber dentro da área rolável. */}
               <div className="overflow-x-auto">
                 <div className="flex items-end gap-3 min-w-max pt-20 px-12">
                   {months.map((m) => {
-                    // Alturas em pixel, não em %: dentro de um flex container a
-                    // altura percentual não resolve contra um pai sem altura
-                    // definida, e as barras somem.
                     const barTotal = Math.max((m.total / maxMonthTotal) * BAR_MAX_PX, 3);
-                    const receivedPx = m.total > 0 ? (m.received / m.total) * barTotal : 0;
-                    const openPx = barTotal - receivedPx;
+                    const setupPx = m.total > 0 ? (m.setup / m.total) * barTotal : 0;
+                    const monthlyPx = barTotal - setupPx;
+                    const dimmed = activeMonth !== "" && m.key !== activeMonth;
                     return (
-                      <div key={m.key} className="group relative flex w-16 flex-col items-center">
+                      <div
+                        key={m.key}
+                        className={`group relative flex w-16 flex-col items-center transition-opacity ${dimmed ? "opacity-35" : ""}`}
+                      >
                         <div
                           className="flex w-full flex-col justify-end"
                           style={{ height: PLOT_HEIGHT_PX }}
@@ -303,25 +363,27 @@ export default async function DashboardPage({
                           <span className="mb-1 text-center text-[10px] font-semibold text-[#52525B] tabular-nums">
                             {compactCurrency.format(m.total)}
                           </span>
-                          {openPx > 0.5 && (
+                          {monthlyPx > 0.5 && (
                             <div
                               className="w-full rounded-t"
                               style={{
-                                backgroundColor: SERIES_OPEN,
-                                height: openPx,
-                                marginBottom: receivedPx > 0.5 ? 2 : 0,
+                                backgroundColor: SERIES_MONTHLY,
+                                height: monthlyPx,
+                                marginBottom: setupPx > 0.5 ? 2 : 0,
                               }}
                             />
                           )}
-                          {receivedPx > 0.5 && (
+                          {setupPx > 0.5 && (
                             <div
-                              className={openPx > 0.5 ? "w-full" : "w-full rounded-t"}
-                              style={{ backgroundColor: SERIES_RECEIVED, height: receivedPx }}
+                              className={monthlyPx > 0.5 ? "w-full" : "w-full rounded-t"}
+                              style={{ backgroundColor: SERIES_SETUP, height: setupPx }}
                             />
                           )}
                         </div>
 
-                        <p className="mt-2 text-[10px] text-[#71717A] whitespace-nowrap">
+                        <p
+                          className={`mt-2 text-[10px] whitespace-nowrap ${m.key === activeMonth ? "font-bold text-[#18181B]" : "text-[#71717A]"}`}
+                        >
                           {monthLabel(m.key, monthShortFmt)}
                         </p>
 
@@ -330,10 +392,10 @@ export default async function DashboardPage({
                             {monthLabel(m.key, monthLongFmt)}
                           </p>
                           <p className="text-[11px] text-[#D4D4D8] tabular-nums">
-                            Recebido: {currency.format(m.received)}
+                            Implantação: {currency.format(m.setup)}
                           </p>
                           <p className="text-[11px] text-[#D4D4D8] tabular-nums">
-                            Em aberto: {currency.format(m.open)}
+                            Mensalidades: {currency.format(m.monthly)}
                           </p>
                         </div>
                       </div>
@@ -367,10 +429,10 @@ export default async function DashboardPage({
                           Mês
                         </th>
                         <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
-                          Recebido
+                          Implantação
                         </th>
                         <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
-                          Em aberto
+                          Mensalidades
                         </th>
                         <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#52525B]">
                           Total
@@ -384,10 +446,10 @@ export default async function DashboardPage({
                             {monthLabel(m.key, monthLongFmt)}
                           </td>
                           <td className="py-2 px-4 text-right text-[#52525B] tabular-nums">
-                            {currency.format(m.received)}
+                            {currency.format(m.setup)}
                           </td>
                           <td className="py-2 px-4 text-right text-[#52525B] tabular-nums">
-                            {currency.format(m.open)}
+                            {currency.format(m.monthly)}
                           </td>
                           <td className="py-2 pl-4 text-right font-semibold text-[#18181B] tabular-nums">
                             {currency.format(m.total)}
@@ -402,40 +464,80 @@ export default async function DashboardPage({
           )}
         </section>
 
-        {/* Ranking por cliente */}
+        {/* Faturamento por cliente */}
         <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-sm font-bold text-[#18181B]">Maiores valores em aberto</h2>
-            <p className="text-xs text-[#A1A1AA]">Por cliente, no período selecionado</p>
+          <div className="mb-5">
+            <h2 className="text-sm font-bold text-[#18181B]">Faturamento por cliente</h2>
+            <p className="text-xs text-[#A1A1AA]">
+              {scopeLabel === "todo o período" ? "Todo o período" : scopeLabel} · implantação e
+              mensalidades separadas
+            </p>
           </div>
 
-          {ranking.length === 0 ? (
-            <p className="text-sm text-[#71717A]">Nenhum valor em aberto no período selecionado.</p>
+          {clientRows.length === 0 ? (
+            <p className="text-sm text-[#71717A]">Nenhum faturamento no filtro selecionado.</p>
           ) : (
-            <div className="flex flex-col gap-3">
-              {ranking.map((r) => (
-                <Link
-                  key={r.id}
-                  href={`/financeiro/${r.id}`}
-                  className="group block rounded-lg px-2 py-1.5 -mx-2 hover:bg-[#F9FBF8] transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-4 mb-1.5">
-                    <p className="text-sm font-medium text-[#18181B] truncate">{r.name}</p>
-                    <p className="text-sm font-semibold text-[#18181B] tabular-nums shrink-0">
-                      {currency.format(r.total)}
-                    </p>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-[#F4F4F5] overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.max((r.total / maxRanking) * 100, 2)}%`,
-                        backgroundColor: SERIES_OPEN,
-                      }}
-                    />
-                  </div>
-                </Link>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#E4E4E7]">
+                    <th className="py-2 pr-4 text-left text-[11px] font-semibold text-[#52525B]">
+                      Cliente
+                    </th>
+                    <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
+                      Implantação
+                    </th>
+                    <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
+                      Mensalidades
+                    </th>
+                    <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#52525B]">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientRows.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="border-b border-[#F4F4F5] last:border-b-0 hover:bg-[#F9FBF8] transition-colors"
+                    >
+                      <td className="py-2.5 pr-4">
+                        <Link
+                          href={`/financeiro/${r.id}`}
+                          className="text-[#18181B] hover:text-[#065F46] font-medium transition-colors"
+                        >
+                          {r.name}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-[#52525B] tabular-nums">
+                        {r.setup > 0 ? currency.format(r.setup) : "—"}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-[#52525B] tabular-nums">
+                        {r.monthly > 0 ? currency.format(r.monthly) : "—"}
+                      </td>
+                      <td className="py-2.5 pl-4 text-right font-semibold text-[#18181B] tabular-nums">
+                        {currency.format(r.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-[#E4E4E7]">
+                    <td className="py-2.5 pr-4 text-[11px] font-semibold text-[#52525B]">
+                      Total ({clientRows.length} cliente{clientRows.length === 1 ? "" : "s"})
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-semibold text-[#18181B] tabular-nums">
+                      {currency.format(setupTotal)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-semibold text-[#18181B] tabular-nums">
+                      {currency.format(monthlyTotal)}
+                    </td>
+                    <td className="py-2.5 pl-4 text-right font-extrabold text-[#18181B] tabular-nums">
+                      {currency.format(grandTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           )}
         </section>
