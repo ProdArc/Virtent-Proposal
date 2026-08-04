@@ -61,24 +61,80 @@ export interface EmailPreview {
   html: string;
 }
 
-function emailShell(bodyHtml: string): string {
+// Aspas SIMPLES nos nomes com espaço: essas strings são interpoladas dentro de
+// style="…" e uma aspa dupla aqui encerraria o atributo, quebrando o estilo
+// inteiro do elemento (e todos os atributos seguintes).
+const FONT_STACK = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif`;
+const MONO_STACK = `'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace`;
+
+/**
+ * Casca do e-mail. Montada com <table> e estilos inline de propósito: cliente
+ * de e-mail (Gmail, Outlook) descarta <style> e não suporta flex/grid, então
+ * layout em tabela é o único jeito confiável de manter a faixa e o card
+ * inteiros em todos eles.
+ *
+ * `preheader` é o texto de prévia que o cliente mostra ao lado do assunto na
+ * caixa de entrada — fica escondido no corpo.
+ */
+function emailShell(preheader: string, bodyHtml: string): string {
   const logoUrl = `${siteUrl()}/images/virtent-logo-icon.png`;
-  return `<div style="font-family: -apple-system, Helvetica, Arial, sans-serif; background:#F9FBF8; padding:32px 16px; color:#18181B;">
-  <div style="max-width:480px; margin:0 auto; background:#ffffff; border:1px solid #E4E4E7; border-radius:16px; padding:32px;">
-    <img src="${logoUrl}" alt="Virtent" width="40" height="40" style="display:block; margin:0 0 24px; border-radius:10px;" />
-    ${bodyHtml}
-  </div>
-  <p style="text-align:center; font-size:11px; color:#A1A1AA; margin:20px 0 0;">Virtent · Operação virtual no WhatsApp</p>
+  return `<div style="background:#F1F3EF; margin:0; padding:32px 16px; font-family:${FONT_STACK}; color:#18181B;">
+  <span style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; height:0; width:0;">${preheader}</span>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="width:100%; max-width:560px; margin:0 auto; background:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #E1E4DD;">
+    <tr>
+      <td style="font-family:${FONT_STACK}; background:#0E1210; padding:26px 32px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="vertical-align:middle;" width="42">
+              <img src="${logoUrl}" alt="Virtent" width="42" height="42" style="display:block; border-radius:11px;" />
+            </td>
+            <td style="vertical-align:middle; padding-left:14px;">
+              <p style="margin:0; color:#ffffff; font-size:15px; font-weight:800; letter-spacing:0.24em; text-transform:uppercase; line-height:1.1;">Virtent</p>
+              <p style="margin:4px 0 0; color:#8A938C; font-size:11.5px; line-height:1.3;">Operação virtual no WhatsApp</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="height:3px; background:#065F46; font-size:0; line-height:0;">&nbsp;</td>
+    </tr>
+    <tr>
+      <td style="font-family:${FONT_STACK}; padding:32px;">${bodyHtml}</td>
+    </tr>
+    <tr>
+      <td style="font-family:${FONT_STACK}; background:#F9FBF8; border-top:1px solid #E1E4DD; padding:20px 32px;">
+        <p style="margin:0; font-size:11.5px; color:#71717A; line-height:1.6;">
+          Este é um e-mail automático de cobrança da <strong style="color:#18181B;">Virtent</strong>.
+          A nota fiscal referente a esta fatura segue em anexo.
+        </p>
+      </td>
+    </tr>
+  </table>
 </div>`;
 }
 
+/** Valor em destaque — é o que o cliente procura primeiro ao abrir uma fatura. */
+function amountBlock(value: string, dueLabel: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 24px;">
+    <tr>
+      <td style="font-family:${FONT_STACK}; background:#F0FAF6; border:1px solid #C9E9DA; border-radius:14px; padding:20px 22px;">
+        <p style="margin:0 0 6px; font-size:10.5px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#065F46;">Valor total</p>
+        <p style="margin:0; font-size:30px; font-weight:800; color:#18181B; line-height:1.1; letter-spacing:-0.02em;">${value}</p>
+        <p style="margin:10px 0 0; font-size:12.5px; color:#52525B; line-height:1.4;">${dueLabel}</p>
+      </td>
+    </tr>
+  </table>`;
+}
+
 function detailsTable(rows: [string, string][]): string {
-  return `<table style="width:100%; font-size:14px; border-collapse:collapse; margin:0 0 24px;">
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="font-family:${FONT_STACK}; width:100%; font-size:13.5px; border-collapse:collapse; margin:0 0 26px;">
     ${rows
       .map(
-        ([label, value]) => `<tr>
-          <td style="padding:8px 0; color:#71717A; border-bottom:1px solid #F4F4F5;">${label}</td>
-          <td style="padding:8px 0; text-align:right; font-weight:600; border-bottom:1px solid #F4F4F5;">${value}</td>
+        ([label, value], i) => `<tr>
+          <td style="padding:11px 0; color:#71717A; ${i === 0 ? "" : "border-top:1px solid #F1F1EF;"}">${label}</td>
+          <td style="padding:11px 0; text-align:right; font-weight:600; color:#18181B; ${i === 0 ? "" : "border-top:1px solid #F1F1EF;"}">${value}</td>
         </tr>`
       )
       .join("")}
@@ -87,67 +143,98 @@ function detailsTable(rows: [string, string][]): string {
 
 function paymentBlock(pixLink: string): string {
   const isUrl = /^https?:\/\//i.test(pixLink.trim());
-  return `<div style="margin:0 0 24px;">
-    <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#52525B; margin:0 0 8px;">Pagamento via PIX</p>
-    ${
-      isUrl
-        ? `<a href="${escapeHtml(pixLink)}" style="display:inline-block; background:#065F46; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700; padding:10px 20px; border-radius:8px;">Pagar via PIX</a>`
-        : `<p style="font-size:13px; font-family:ui-monospace, monospace; background:#F4F4F5; border-radius:8px; padding:12px; word-break:break-all; margin:0; color:#18181B;">${escapeHtml(pixLink)}</p>`
-    }
-  </div>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 26px;">
+    <tr>
+      <td style="font-family:${FONT_STACK}; border:1px solid #E1E4DD; border-radius:14px; padding:20px 22px;">
+        <p style="margin:0 0 12px; font-size:10.5px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#52525B;">Pagamento via PIX</p>
+        ${
+          isUrl
+            ? `<a href="${escapeHtml(pixLink)}" style="display:inline-block; background:#065F46; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700; padding:13px 28px; border-radius:10px;">Pagar via PIX</a>
+               <p style="margin:12px 0 0; font-size:11.5px; color:#A1A1AA; line-height:1.5;">O botão abre a cobrança para pagamento.</p>`
+            : `<p style="margin:0; font-size:12px; font-family:${MONO_STACK}; background:#F6F7F4; border:1px solid #E9EBE5; border-radius:10px; padding:14px; word-break:break-all; line-height:1.7; color:#18181B;">${escapeHtml(pixLink)}</p>
+               <p style="margin:12px 0 0; font-size:11.5px; color:#A1A1AA; line-height:1.5;">Copie o código acima e cole na opção <strong style="color:#52525B;">PIX Copia e Cola</strong> do app do seu banco.</p>`
+        }
+      </td>
+    </tr>
+  </table>`;
 }
 
 function supportAndSignature(): string {
   const email = supportEmail();
-  return `<p style="font-size:13px; color:#71717A; line-height:1.6; margin:0 0 24px;">
-    Em caso de dúvidas, entre em contato pelo <a href="mailto:${email}" style="color:#065F46; text-decoration:none;">${email}</a>.
+  return `<p style="font-size:13px; color:#71717A; line-height:1.65; margin:0 0 26px;">
+    Em caso de dúvidas, entre em contato pelo <a href="mailto:${email}" style="color:#065F46; text-decoration:none; font-weight:600;">${email}</a>.
   </p>
-  <p style="font-size:14px; line-height:1.6; color:#18181B; margin:0;">
+  <p style="font-size:13.5px; line-height:1.65; color:#52525B; margin:0;">
     Atenciosamente,<br />
-    <strong>Equipe Virtent</strong>
+    <strong style="color:#18181B;">Equipe Virtent</strong>
   </p>`;
+}
+
+function greeting(name: string, intro: string): string {
+  return `<p style="font-size:14px; line-height:1.65; margin:0 0 14px; color:#18181B;">Prezado(a) <strong>${name}</strong>,</p>
+  <p style="font-size:14px; line-height:1.65; margin:0 0 26px; color:#52525B;">${intro}</p>`;
 }
 
 /** Prévia da cobrança de implantação — enviada no máximo 1 vez por cliente (ver `client.setup_email_sent_at`). */
 export function renderSetupEmail(client: FinancialClientRow): EmailPreview {
   const name = escapeHtml(client.name);
   const subject = `Fatura de implantação Virtent — ${client.name}`;
-  const html = emailShell(`
-    <p style="font-size:14px; line-height:1.6; margin:0 0 16px;">Prezado(a) <strong>${name}</strong>,</p>
-    <p style="font-size:14px; line-height:1.6; margin:0 0 24px;">
-      Informamos que a fatura referente à implantação da Virtent para <strong>${name}</strong> está disponível.
-    </p>
+  const dueLabel = client.setup_due_date
+    ? `Vencimento em <strong style="color:#18181B;">${dateFmt(client.setup_due_date)}</strong>`
+    : `Vencimento <strong style="color:#18181B;">a combinar</strong>`;
+
+  const html = emailShell(
+    `Fatura de implantação · ${currency.format(client.setup_value)}`,
+    `
+    ${greeting(
+      name,
+      `Informamos que a fatura referente à implantação da Virtent para <strong style="color:#18181B;">${name}</strong> está disponível.`
+    )}
+    ${amountBlock(currency.format(client.setup_value), dueLabel)}
     ${detailsTable([
       ["Serviço", "Implantação Virtent"],
-      ["Valor", currency.format(client.setup_value)],
-      ["Vencimento", client.setup_due_date ? dateFmt(client.setup_due_date) : "a combinar"],
+      ["Cobrança", "Parcela única"],
     ])}
     ${paymentBlock(client.setup_pix_link ?? "")}
     ${supportAndSignature()}
-  `);
+  `
+  );
   return { to: client.email ?? "", subject, html };
 }
 
 /** Prévia da cobrança de mensalidade de um ciclo — enviada no máximo 1 vez por referência (ver `billing.email_sent_at`). */
 export function renderBillingEmail(client: FinancialClientRow, billing: FinancialBillingRow): EmailPreview {
   const name = escapeHtml(client.name);
-  const { total_value } = calcBillingTotal(billing);
+  const { total_value, commission_value } = calcBillingTotal(billing);
   const reference = capitalize(monthYearFmt.format(new Date(`${billing.due_date}T00:00:00`)));
   const subject = `Fatura de mensalidade Virtent — ${reference} — ${client.name}`;
-  const html = emailShell(`
-    <p style="font-size:14px; line-height:1.6; margin:0 0 16px;">Prezado(a) <strong>${name}</strong>,</p>
-    <p style="font-size:14px; line-height:1.6; margin:0 0 24px;">
-      Informamos que a fatura referente à mensalidade Virtent de <strong>${name}</strong>, referente a ${reference}, está disponível.
-    </p>
-    ${detailsTable([
-      ["Serviço", "Mensalidade Virtent"],
-      ["Referência", reference],
-      ["Valor", currency.format(total_value)],
-      ["Vencimento", dateFmt(billing.due_date)],
-    ])}
+
+  const rows: [string, string][] = [
+    ["Serviço", "Mensalidade Virtent"],
+    ["Referência", reference],
+    ["Mensalidade", currency.format(billing.monthly_value)],
+  ];
+  // Só mostra a linha de comissão quando ela existe — senão vira ruído com "R$ 0,00".
+  if (commission_value > 0) {
+    rows.push([`Comissão (${billing.commission_pct}%)`, currency.format(commission_value)]);
+  }
+
+  const html = emailShell(
+    `Fatura de ${reference} · ${currency.format(total_value)}`,
+    `
+    ${greeting(
+      name,
+      `Informamos que a fatura referente à mensalidade Virtent de <strong style="color:#18181B;">${name}</strong>, referente a ${reference}, está disponível.`
+    )}
+    ${amountBlock(
+      currency.format(total_value),
+      `Vencimento em <strong style="color:#18181B;">${dateFmt(billing.due_date)}</strong>`
+    )}
+    ${detailsTable(rows)}
     ${paymentBlock(billing.pix_link ?? "")}
     ${supportAndSignature()}
-  `);
+  `
+  );
   return { to: client.email ?? "", subject, html };
 }
 
