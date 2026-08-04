@@ -50,7 +50,12 @@ create table financial_billings (
   pix_link text, -- link/copia-e-cola da cobrança PIX do ciclo, exigido pra liberar o envio do e-mail
   email_sent_at timestamptz, -- cobrança de cada referência/mês só é enviada por e-mail 1 vez
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- Trava contra corrida: ensureCurrentBilling (lib/financial.ts) pode ser
+  -- chamada concorrentemente (2 abas, prefetch do Next.js etc.) e decide se
+  -- cria o ciclo com um SELECT antes do INSERT — sem essa constraint, duas
+  -- chamadas simultâneas podem ambas decidir "não existe ainda" e duplicar.
+  unique (client_id, due_date)
 );
 
 create index financial_billings_client_idx on financial_billings (client_id);

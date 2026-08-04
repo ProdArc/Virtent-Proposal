@@ -271,20 +271,39 @@ export async function updateSetupPixLink(id: string, pixLink: string | null): Pr
   }
 }
 
-/** Soma um mês a uma due_date (YYYY-MM-DD), fixando o dia em `dueDay` (clampado 1-28 pra evitar estouro de mês). */
-function nextCycleDueDate(previousDueDateIso: string, dueDay: number): string {
-  const [year, month] = previousDueDateIso.split("-").map(Number);
+/** Soma `monthsToAdd` meses a uma due_date (YYYY-MM-DD), fixando o dia em `dueDay` (clampado 1-28 pra evitar estouro de mês). */
+function cycleDueDatePlusMonths(baseDueDateIso: string, monthsToAdd: number, dueDay: number): string {
+  const [year, month] = baseDueDateIso.split("-").map(Number);
   const day = Math.min(Math.max(dueDay, 1), 28);
-  // `month` já vem 1-indexado do split; passar ele (sem -1) pro Date.UTC (0-indexado) avança exatamente 1 mês.
-  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+  // `month` já vem 1-indexado do split; month-1+monthsToAdd no Date.UTC (0-indexado) avança monthsToAdd meses.
+  return new Date(Date.UTC(year, month - 1 + monthsToAdd, day)).toISOString().slice(0, 10);
 }
 
+function nextCycleDueDate(previousDueDateIso: string, dueDay: number): string {
+  return cycleDueDatePlusMonths(previousDueDateIso, 1, dueDay);
+}
+
+/** Diferença aproximada em meses (só ano/mês, ignora o dia) entre duas due_date. */
+function monthsBetween(fromIso: string, toIso: string): number {
+  const [fy, fm] = fromIso.split("-").map(Number);
+  const [ty, tm] = toIso.split("-").map(Number);
+  return (ty - fy) * 12 + (tm - fm);
+}
+
+// Limite de ciclos atrasados gerados de uma vez. Sem isso, um cliente
+// cadastrado com `first_billing_date` de anos atrás (ex: migrando um cliente
+// antigo pro sistema) gera uma linha de cobrança pra CADA mês perdido — já
+// aconteceu de gerar 400+ cobranças retroativas numa única chamada. Qualquer
+// lacuna maior que isso é pulada silenciosamente: o histórico anterior a
+// esse ponto não é de interesse pra cobrança ativa.
+const MAX_BACKFILL_CYCLES = 3;
+
 /**
- * Geração preguiçosa: garante que existem cobranças para todos os ciclos já
- * vencidos e ainda não gerados, MAIS uma única referência futura (o próximo
- * ciclo, ainda não vencido) — pra aparecer na lista com antecedência e já dar
- * pra anexar comprovante/NFe antes do vencimento chegar. Chamada ao abrir a
- * página de detalhe do cliente.
+ * Geração preguiçosa: garante que existem cobranças pros ciclos já vencidos
+ * (até `MAX_BACKFILL_CYCLES` atrasados) e ainda não gerados, MAIS uma única
+ * referência futura (o próximo ciclo, ainda não vencido) — pra aparecer na
+ * lista com antecedência e já dar pra anexar comprovante/NFe antes do
+ * vencimento chegar. Chamada ao abrir a página de detalhe do cliente.
  *
  * Mensalidade é pós-paga: o 1º ciclo usa exatamente `first_billing_date`
  * (configurado no cadastro do cliente), não "mês atual + due_day" — senão um
@@ -298,7 +317,10 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
   const supabase = getSupabaseServerClient();
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  for (;;) {
+  // Cap duro de iterações: MAX_BACKFILL_CYCLES + 1 (futuro) já cobre o caso
+  // legítimo mais longo; qualquer coisa além disso é sinal de que algo saiu
+  // do esperado (não deveria nunca ser atingido na prática).
+  for (let i = 0; i < MAX_BACKFILL_CYCLES + 2; i++) {
     const { data: lastBilling, error: lastError } = await withRetry(async () =>
       supabase
         .from("financial_billings")
@@ -315,9 +337,14 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
 
     if (lastBilling && lastBilling.due_date > todayIso) break;
 
-    const nextDueDate = lastBilling
+    let nextDueDate = lastBilling
       ? nextCycleDueDate(lastBilling.due_date, client.due_day)
       : client.first_billing_date;
+
+    const gapMonths = monthsBetween(nextDueDate, todayIso);
+    if (gapMonths > MAX_BACKFILL_CYCLES) {
+      nextDueDate = cycleDueDatePlusMonths(nextDueDate, gapMonths - MAX_BACKFILL_CYCLES, client.due_day);
+    }
 
     const { error: insertError } = await withRetry(async () =>
       supabase.from("financial_billings").insert({
@@ -330,6 +357,10 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
     );
 
     if (insertError) {
+      // 23505 = unique_violation (constraint em financial_billings sobre
+      // client_id+due_date) — outra chamada concorrente (2 abas, prefetch
+      // duplicado etc.) já criou esse ciclo primeiro. Nada a fazer, não é erro.
+      if (insertError.code === "23505") break;
       throw new Error(`Falha ao gerar cobrança do ciclo: ${insertError.message}`);
     }
 
