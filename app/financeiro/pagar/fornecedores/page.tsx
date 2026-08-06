@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listPayables, listSuppliers, type PayableRow, type SupplierRow } from "@/lib/payables";
 import { remainingAmount } from "@/lib/payables-status";
 import { todayIso } from "@/lib/urgency";
+import { displayDocument, displayPhone } from "@/lib/format";
 import { ConfirmButton } from "@/app/financeiro/[id]/ConfirmButton";
 import { SupplierForm } from "./SupplierForm";
 import { deleteSupplierAction } from "../actions";
@@ -86,7 +87,7 @@ export default async function FornecedoresPage() {
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-ink">{s.name}</span>
                       <span className="block truncate text-[11.5px] text-secondary-ink">
-                        {s.document || "sem documento"}
+                        {displayDocument(s.document) || "sem documento"}
                         {st.openCount > 0
                           ? ` · ${st.openCount} conta${st.openCount === 1 ? "" : "s"} em aberto`
                           : " · nada em aberto"}
@@ -128,7 +129,7 @@ export default async function FornecedoresPage() {
                         <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
                           Telefone
                         </p>
-                        <p className="text-sm text-ink truncate">{s.phone || "—"}</p>
+                        <p className="text-sm text-ink truncate">{displayPhone(s.phone) || "—"}</p>
                       </div>
                     </div>
 

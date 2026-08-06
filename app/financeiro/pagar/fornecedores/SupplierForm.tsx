@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { SupplierRow } from "@/lib/payables";
+import { DocumentInput, PhoneInput } from "@/components/ui/MaskedInput";
 import { saveSupplierAction, type FormState } from "../actions";
 
 const initial: FormState = {};
@@ -39,11 +40,11 @@ export function SupplierForm({ supplier }: { supplier?: SupplierRow }) {
         </div>
         <div>
           <label className={LABEL}>CNPJ / CPF</label>
-          <input name="document" defaultValue={supplier?.document ?? ""} className={FIELD} />
+          <DocumentInput name="document" defaultValue={supplier?.document} className={FIELD} />
         </div>
         <div>
           <label className={LABEL}>Telefone</label>
-          <input name="phone" defaultValue={supplier?.phone ?? ""} className={FIELD} />
+          <PhoneInput name="phone" defaultValue={supplier?.phone} className={FIELD} />
         </div>
         <div className="sm:col-span-2">
           <label className={LABEL}>E-mail</label>
