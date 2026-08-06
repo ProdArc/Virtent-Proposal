@@ -15,6 +15,42 @@
   --color-accent-ink: #B45309;
   --color-petrol: #08211B;
   --color-petrol-raised: #0E2C23;
+
+  /* ── Status do painel financeiro ──────────────────────────────────
+     Um significado por cor, sem reaproveitamento entre camadas:
+       paid       (verde) → pago / em dia / implantação concluída
+       pending    (âmbar) → em aberto, ainda dentro do prazo
+       overdue    (vermelho) → atrasado ou vencendo em ≤7 dias
+       onboarding (azul) → implantação em andamento — é estado de
+                  cadastro, não prazo; usava âmbar antes e se confundia
+                  com "vence em X dias"
+       neutral    (cinza) → dado estrutural, nunca status
+     Todos os pares texto/fundo verificados em WCAG AA (≥4.5:1) para
+     texto normal — ver o resumo do redesign. */
+  --color-paid-ink: #065F46;
+  --color-paid-bg: #ECFDF5;
+  --color-paid-line: #A7E8CC;
+
+  --color-pending-ink: #B45309;
+  --color-pending-bg: #FFF7ED;
+  --color-pending-line: #F6CE9B;
+
+  --color-overdue-ink: #B91C1C;
+  --color-overdue-bg: #FEF2F2;
+  --color-overdue-line: #F5B5B5;
+
+  --color-onboarding-ink: #1D4ED8;
+  --color-onboarding-bg: #EFF6FF;
+  --color-onboarding-line: #BFDBFE;
+
+  --color-neutral-ink: #52525B;
+  --color-neutral-bg: #F4F4F5;
+  --color-neutral-line: #E4E4E7;
+
+  /* Texto secundário. #A1A1AA (o --color-subtle antigo) rende só 2.56:1
+     sobre branco e reprova em AA; este é o tom mais claro que passa. */
+  --color-secondary-ink: #71717A;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
