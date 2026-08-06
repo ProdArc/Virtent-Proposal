@@ -20,6 +20,7 @@ import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { StatusChips } from "@/components/financeiro/StatusChips";
 import { SearchInput } from "@/components/financeiro/SearchInput";
 import { UrgencyGroupHeader } from "@/components/financeiro/UrgencyGroupHeader";
+import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -151,6 +152,10 @@ export default async function FinanceiroPage({
               + Novo cliente
             </Link>
           </div>
+        </div>
+
+        <div className="mb-5">
+          <FinanceTabs active="receber" />
         </div>
 
         {/* Resumo — cada card filtra a lista abaixo */}

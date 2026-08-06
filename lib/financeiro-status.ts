@@ -1,5 +1,27 @@
 import type { FinancialBillingRow, FinancialClientRow } from "@/lib/financial";
 import { calcBillingTotal } from "@/lib/financial";
+import {
+  daysUntil,
+  groupForDays,
+  todayIso,
+  URGENT_WINDOW_DAYS,
+  type Tone,
+  type UrgencyGroup,
+} from "@/lib/urgency";
+
+// As primitivas puras moram em lib/urgency.ts (sem server-only, pra poderem
+// ser usadas por client component). Reexportadas aqui por conveniência.
+export {
+  daysUntil,
+  groupForDays,
+  todayIso,
+  URGENT_WINDOW_DAYS,
+  GROUP_ORDER,
+  GROUP_LABEL,
+  GROUP_HINT,
+  GROUP_TONE,
+} from "@/lib/urgency";
+export type { Tone, UrgencyGroup } from "@/lib/urgency";
 
 /**
  * Regras de status e urgência do painel financeiro. Fica fora dos componentes
@@ -7,23 +29,6 @@ import { calcBillingTotal } from "@/lib/financial";
  * conferir sem renderizar tela.
  */
 
-/** Estado de uma cobrança. `overdue` cobre atrasado E vencendo em ≤7 dias — os dois pedem ação imediata. */
-export type BillingState = "paid" | "overdue" | "pending" | "future";
-
-/** Camada visual: cada uma tem paleta própria pra não confundir prazo com cadastro. */
-export type Tone = "paid" | "pending" | "overdue" | "onboarding" | "neutral";
-
-export const URGENT_WINDOW_DAYS = 7;
-
-export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export function daysUntil(dueDateIso: string, fromIso: string): number {
-  return Math.round(
-    (Date.parse(`${dueDateIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / 86_400_000
-  );
-}
 
 export function billingState(b: FinancialBillingRow, today: string): BillingState {
   if (b.paid) return "paid";
@@ -33,6 +38,9 @@ export function billingState(b: FinancialBillingRow, today: string): BillingStat
   if (days <= 30) return "pending";
   return "future";
 }
+
+/** Estado de uma cobrança. `overdue` cobre atrasado E vencendo em ≤7 dias — os dois pedem ação imediata. */
+export type BillingState = "paid" | "overdue" | "pending" | "future";
 
 export const STATE_LABEL: Record<BillingState, string> = {
   paid: "Paga",
@@ -50,30 +58,6 @@ export const STATE_TONE: Record<BillingState, Tone> = {
 
 // ── Urgência do cliente ────────────────────────────────────────────────
 
-export type UrgencyGroup = "immediate" | "week" | "month" | "ok";
-
-export const GROUP_ORDER: UrgencyGroup[] = ["immediate", "week", "month", "ok"];
-
-export const GROUP_LABEL: Record<UrgencyGroup, string> = {
-  immediate: "Ação imediata",
-  week: "Esta semana",
-  month: "Este mês",
-  ok: "Em dia",
-};
-
-export const GROUP_HINT: Record<UrgencyGroup, string> = {
-  immediate: "Cobranças já vencidas",
-  week: "Vencem em até 7 dias",
-  month: "Vencem em até 30 dias",
-  ok: "Nada vencendo nos próximos 30 dias",
-};
-
-export const GROUP_TONE: Record<UrgencyGroup, Tone> = {
-  immediate: "overdue",
-  week: "overdue",
-  month: "pending",
-  ok: "paid",
-};
 
 /** Uma pendência aberta — mensalidade ou implantação, tratadas igual pro cálculo de urgência. */
 export interface OpenItem {
@@ -112,13 +96,6 @@ function shortMonth(iso: string): string {
   return `${MONTHS[month - 1]}/${String(year).slice(2)}`;
 }
 
-function groupFor(soonestDays: number | null): UrgencyGroup {
-  if (soonestDays === null) return "ok";
-  if (soonestDays < 0) return "immediate";
-  if (soonestDays <= URGENT_WINDOW_DAYS) return "week";
-  if (soonestDays <= 30) return "month";
-  return "ok";
-}
 
 /** Insumos que faltam pra conseguir enviar a cobrança de um ciclo. */
 function billingBlockers(client: FinancialClientRow, b: FinancialBillingRow): string[] {
@@ -212,7 +189,7 @@ export function clientStatus(
     overdueCount,
     urgentCount,
     soonestDays,
-    group: groupFor(soonestDays),
+    group: groupForDays(soonestDays),
     action: nextAction(client, billings, today, soonest, blockers),
     setupTone,
     setupLabel,

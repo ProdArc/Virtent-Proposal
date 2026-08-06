@@ -8,6 +8,10 @@ import {
 } from "@/lib/financial";
 import { LogoutButton } from "@/components/ui/LogoutButton";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { CashFlowPanel, type CashFlowWindow } from "@/components/financeiro/CashFlowPanel";
+import { listPayables } from "@/lib/payables";
+import { remainingAmount } from "@/lib/payables-status";
+import { daysUntil } from "@/lib/financeiro-status";
 
 // Paleta das séries validada com scripts/validate_palette.js (skill dataviz):
 // ΔE 27.6 visão normal / 9.2 CVD no par adjacente. O contraste do verde fica
@@ -204,6 +208,30 @@ export default async function DashboardPage({
     .filter((m) => m.total > 0);
   const maxMonthTotal = Math.max(1, ...months.map((m) => m.total));
 
+  // Fluxo de caixa: cruza recebíveis e contas a pagar em aberto por janela de
+  // vencimento. Falha silenciosa se o módulo de pagar ainda não foi instalado
+  // no banco — o resto do dashboard não deve quebrar por causa disso.
+  let cashFlow: CashFlowWindow[] | null = null;
+  try {
+    const payables = await listPayables();
+    const openPayables = payables.filter((p) => p.status === "pending");
+    const openBillings = billings.filter((b) => !b.paid);
+    cashFlow = [7, 30].map((days) => ({
+      days,
+      toReceive: openBillings
+        .filter((b) => {
+          const d = daysUntil(b.due_date, todayIso);
+          return d <= days; // vencidos entram: ainda são caixa esperado
+        })
+        .reduce((s, b) => s + calcBillingTotal(b).total_value, 0),
+      toPay: openPayables
+        .filter((p) => daysUntil(p.due_date, todayIso) <= days)
+        .reduce((s, p) => s + remainingAmount(p), 0),
+    }));
+  } catch {
+    cashFlow = null;
+  }
+
   const scopeLabel = activeMonth ? monthLabel(activeMonth, monthLongFmt) : "todo o período";
   const statusLabel =
     STATUS_OPTIONS.find((o) => o.value === activeStatus)?.label.toLowerCase() ?? "";
@@ -314,6 +342,12 @@ export default async function DashboardPage({
             </p>
           </div>
         </div>
+
+        {cashFlow && (
+          <div className="mb-6">
+            <CashFlowPanel windows={cashFlow} />
+          </div>
+        )}
 
         {/* Evolução mensal */}
         <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 shadow-sm mb-6">

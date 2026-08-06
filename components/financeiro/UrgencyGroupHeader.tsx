@@ -4,7 +4,7 @@ import {
   GROUP_TONE,
   type Tone,
   type UrgencyGroup,
-} from "@/lib/financeiro-status";
+} from "@/lib/urgency";
 
 const DOT_CLASS: Record<Tone, string> = {
   paid: "bg-paid-ink",

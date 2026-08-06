@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Tone } from "@/lib/financeiro-status";
+import type { Tone } from "@/lib/urgency";
 
 const VALUE_CLASS: Record<Tone, string> = {
   paid: "text-paid-ink",

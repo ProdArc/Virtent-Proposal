@@ -1,4 +1,4 @@
-import type { Tone } from "@/lib/financeiro-status";
+import type { Tone } from "@/lib/urgency";
 
 /**
  * Classes por tom. Escritas por extenso (e não montadas em runtime) porque o
