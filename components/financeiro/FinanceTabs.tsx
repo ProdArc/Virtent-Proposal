@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-/** Abas do painel financeiro — os dois módulos são o mesmo sistema, não dois. */
-export function FinanceTabs({ active }: { active: "receber" | "pagar" }) {
+/** Abas do painel financeiro — os três módulos são o mesmo sistema, não três. */
+export function FinanceTabs({ active }: { active: "receber" | "pagar" | "caixa" }) {
   const tabs = [
-    { key: "receber" as const, label: "Contas a receber", href: "/financeiro" },
-    { key: "pagar" as const, label: "Contas a pagar", href: "/financeiro/pagar" },
+    { key: "receber" as const, label: "A receber", href: "/financeiro" },
+    { key: "pagar" as const, label: "A pagar", href: "/financeiro/pagar" },
+    { key: "caixa" as const, label: "Caixa", href: "/financeiro/caixa" },
   ];
 
   return (

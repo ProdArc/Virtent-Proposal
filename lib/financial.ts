@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { recordMovement, reverseMovementsFor } from "@/lib/cash";
 
 export interface FinancialClientRow {
   id: string;
@@ -250,6 +251,13 @@ export async function updateFinancialClient(
 }
 
 export async function deleteFinancialClient(id: string): Promise<void> {
+  // O delete em cascata leva as cobranças junto, então os estornos precisam
+  // acontecer antes — inclusive os das cobranças filhas.
+  for (const b of await listBillingsForClient(id)) {
+    await reverseMovementsFor("billing", b.id, "Cliente excluído");
+  }
+  await reverseMovementsFor("client_setup", id, "Cliente excluído");
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("financial_clients").delete().eq("id", id);
 
@@ -259,6 +267,9 @@ export async function deleteFinancialClient(id: string): Promise<void> {
 }
 
 export async function setSetupPaid(id: string, paid: boolean): Promise<void> {
+  const client = await getFinancialClient(id);
+  if (!client) throw new Error("Cliente não encontrado.");
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase
     .from("financial_clients")
@@ -271,6 +282,22 @@ export async function setSetupPaid(id: string, paid: boolean): Promise<void> {
 
   if (error) {
     throw new Error(`Falha ao atualizar status da implantação "${id}": ${error.message}`);
+  }
+
+  // Caixa: a baixa é o evento que move o dinheiro. Desfazer estorna em vez de
+  // apagar, pra não sumir com o histórico.
+  if (paid) {
+    await recordMovement({
+      direction: "in",
+      amount: client.setup_value,
+      kind: "setup",
+      description: `Implantação — ${client.name}`,
+      counterpart: client.name,
+      sourceType: "client_setup",
+      sourceId: client.id,
+    });
+  } else {
+    await reverseMovementsFor("client_setup", client.id, "Baixa desfeita");
   }
 }
 
@@ -463,6 +490,10 @@ export async function updateBillingPixLink(id: string, pixLink: string | null): 
 }
 
 export async function setBillingPaid(id: string, paid: boolean): Promise<void> {
+  const billing = await getBillingById(id);
+  if (!billing) throw new Error("Cobrança não encontrada.");
+  const client = await getFinancialClient(billing.client_id);
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase
     .from("financial_billings")
@@ -476,9 +507,31 @@ export async function setBillingPaid(id: string, paid: boolean): Promise<void> {
   if (error) {
     throw new Error(`Falha ao atualizar status da cobrança "${id}": ${error.message}`);
   }
+
+  if (paid) {
+    const reference = new Date(`${billing.due_date}T00:00:00`).toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+    await recordMovement({
+      direction: "in",
+      amount: calcBillingTotal(billing).total_value,
+      kind: "monthly",
+      description: `Mensalidade ${reference} — ${client?.name ?? "cliente"}`,
+      counterpart: client?.name ?? null,
+      sourceType: "billing",
+      sourceId: billing.id,
+    });
+  } else {
+    await reverseMovementsFor("billing", billing.id, "Baixa desfeita");
+  }
 }
 
 export async function deleteBilling(id: string): Promise<void> {
+  // Estorna antes de apagar: sem isso, a entrada dessa cobrança ficaria no
+  // saldo sem nenhuma cobrança correspondente (saldo fantasma).
+  await reverseMovementsFor("billing", id, "Cobrança excluída");
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("financial_billings").delete().eq("id", id);
 

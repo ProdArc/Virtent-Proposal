@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { recordMovement, reverseMovementsFor } from "@/lib/cash";
 
 // Camada de dados de contas a pagar. Espelha lib/financial.ts em estilo:
 // funções finas por operação, erro com mensagem em português, sem ORM.
@@ -332,6 +333,8 @@ export async function updatePayable(id: string, input: PayableInput): Promise<vo
 }
 
 export async function deletePayable(id: string): Promise<void> {
+  await reverseMovementsFor("payable", id, "Conta excluída");
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("payables").delete().eq("id", id);
   if (error) throw new Error(`Falha ao excluir conta: ${error.message}`);
@@ -390,10 +393,26 @@ export async function payPayable(id: string, amount?: number): Promise<void> {
     })
     .eq("id", id);
   if (error) throw new Error(`Falha ao registrar pagamento: ${error.message}`);
+
+  // Caixa: sai só o que foi pago AGORA. Pagamento parcial gera uma
+  // movimentação por parcela paga, cada uma com sua data.
+  const supplier = await getSupplier(payable.supplier_id);
+  await recordMovement({
+    direction: "out",
+    amount: newPaid - alreadyPaid,
+    kind: "payable",
+    description: `${payable.title} — ${supplier?.name ?? "fornecedor"}`,
+    counterpart: supplier?.name ?? null,
+    sourceType: "payable",
+    sourceId: payable.id,
+  });
 }
 
 /** Desfaz o pagamento por inteiro — volta a conta para pendente e zera o valor pago. */
 export async function unpayPayable(id: string): Promise<void> {
+  // Estorna TODOS os pagamentos vivos desta conta — inclusive os parciais.
+  await reverseMovementsFor("payable", id, "Pagamento desfeito");
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase
     .from("payables")
@@ -409,6 +428,11 @@ export async function unpayPayable(id: string): Promise<void> {
 }
 
 export async function setPayableStatus(id: string, status: PayableStatus): Promise<void> {
+  // Cancelar uma conta já paga devolve o dinheiro ao caixa.
+  if (status === "canceled") {
+    await reverseMovementsFor("payable", id, "Conta cancelada");
+  }
+
   const supabase = getSupabaseServerClient();
   const { error } = await supabase
     .from("payables")
