@@ -135,7 +135,12 @@ create index if not exists payables_category_idx on payables (category_id);
 create index if not exists payables_recurrence_group_idx on payables (recurrence_group_id);
 
 -- Categorias iniciais, pra não começar com tela vazia.
-insert into payable_categories (name, color) values
+-- O "where not exists" torna a migração segura de rodar de novo: só semeia
+-- com a tabela vazia, então não duplica a lista nem ressuscita categoria que
+-- você tenha apagado depois.
+insert into payable_categories (name, color)
+select seed.name, seed.color
+from (values
   ('Aluguel', '#2a78d6'),
   ('Folha / Pró-labore', '#7c3aed'),
   ('Impostos', '#b91c1c'),
@@ -144,5 +149,7 @@ insert into payable_categories (name, color) values
   ('Fornecedores de serviço', '#1baf7a'),
   ('Manutenção', '#a16207'),
   ('Outros', '#71717A')
-on conflict do nothing;
+) as seed(name, color)
+where not exists (select 1 from payable_categories);
+
 
