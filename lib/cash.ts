@@ -2,17 +2,20 @@ import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
 
 /**
- * Livro de caixa. Ninguém lança movimentação à mão (exceto o saldo inicial):
- * elas nascem das ações que já existem — dar baixa num recebível e pagar uma
- * conta. Isso é o que impede o mesmo dinheiro de ser digitado duas vezes.
+ * Livro de caixa. Quase ninguém lança movimentação à mão: elas nascem das
+ * ações que já existem — dar baixa num recebível e pagar uma conta. Isso é o
+ * que impede o mesmo dinheiro de ser digitado duas vezes. As exceções são o
+ * saldo inicial e a entrada manual avulsa (aporte, devolução...), que não têm
+ * uma "conta de origem" pra nascer sozinhas.
  *
  * Correção é sempre na origem. Desfazer uma baixa não apaga a movimentação:
  * lança um ESTORNO apontando para ela, então o extrato continua auditável e o
- * saldo se ajusta sozinho.
+ * saldo se ajusta sozinho. Entrada manual segue a mesma regra, só que como
+ * ela É a origem, o estorno é disparado direto do extrato (reverseManualMovement).
  */
 
 export type Direction = "in" | "out";
-export type MovementKind = "opening" | "setup" | "monthly" | "payable";
+export type MovementKind = "opening" | "setup" | "monthly" | "payable" | "manual";
 export type SourceType = "client_setup" | "billing" | "payable";
 
 export interface CashMovementRow {
@@ -34,6 +37,7 @@ export const KIND_LABEL: Record<MovementKind, string> = {
   setup: "Implantação",
   monthly: "Mensalidade",
   payable: "Conta a pagar",
+  manual: "Entrada manual",
 };
 
 export interface NewMovement {
@@ -145,6 +149,52 @@ export async function reverseMovementsFor(
   );
   if (error && !isMissingLedger(error)) {
     throw new Error(`Falha ao estornar movimentação: ${error.message}`);
+  }
+}
+
+/**
+ * Estorna uma entrada manual específica (aporte, devolução...) pelo próprio
+ * id. Só serve pra `kind: "manual"` — as demais origens (setup, mensalidade,
+ * conta a pagar) têm um cadastro próprio e devem ser corrigidas por lá, que
+ * aciona `reverseMovementsFor`. Entrada manual não tem esse cadastro: ela
+ * mesma é a origem, então o estorno acontece direto no extrato.
+ */
+export async function reverseManualMovement(id: string, reason: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase.from("cash_movements").select("*").eq("id", id).maybeSingle();
+  if (error) {
+    if (isMissingLedger(error)) return;
+    throw new Error(`Falha ao buscar movimentação: ${error.message}`);
+  }
+
+  const movement = data as CashMovementRow | null;
+  if (!movement) throw new Error("Movimentação não encontrada.");
+  if (movement.kind !== "manual") {
+    throw new Error("Só entradas manuais podem ser estornadas por aqui.");
+  }
+  if (movement.reverses_id) throw new Error("Isso já é um estorno.");
+
+  const { data: existingReversal, error: checkError } = await supabase
+    .from("cash_movements")
+    .select("id")
+    .eq("reverses_id", id)
+    .maybeSingle();
+  if (checkError) throw new Error(`Falha ao verificar estorno: ${checkError.message}`);
+  if (existingReversal) throw new Error("Essa entrada já foi estornada.");
+
+  const { error: insertError } = await supabase.from("cash_movements").insert({
+    direction: movement.direction === "in" ? "out" : "in",
+    amount: movement.amount,
+    kind: movement.kind,
+    description: `${reason}: ${movement.description}`,
+    counterpart: movement.counterpart,
+    source_type: movement.source_type,
+    source_id: movement.source_id,
+    reverses_id: movement.id,
+    occurred_at: new Date().toISOString(),
+  });
+  if (insertError && !isMissingLedger(insertError)) {
+    throw new Error(`Falha ao estornar entrada: ${insertError.message}`);
   }
 }
 

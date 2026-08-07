@@ -4,12 +4,13 @@ import { normalizeName } from "@/lib/payables";
 import { LogoutButton } from "@/components/ui/LogoutButton";
 import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
 import { LedgerFilters } from "./LedgerFilters";
+import { ReverseManualButton } from "./ReverseManualButton";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
-const KINDS: MovementKind[] = ["opening", "setup", "monthly", "payable"];
+const KINDS: MovementKind[] = ["opening", "setup", "monthly", "payable", "manual"];
 
 /** Para onde o item do extrato leva de volta. */
 function sourceHref(m: CashMovementRow): string | null {
@@ -72,6 +73,9 @@ export default async function ExtratoPage({
     running += m.direction === "in" ? Number(m.amount) : -Number(m.amount);
     runningById.set(m.id, Math.round(running * 100) / 100);
   }
+
+  // Entradas manuais já estornadas não podem ser estornadas de novo.
+  const reversedIds = new Set(movements.map((m) => m.reverses_id).filter(Boolean) as string[]);
 
   const needle = normalizeName(q);
   const visible = movements.filter((m) => {
@@ -166,6 +170,7 @@ export default async function ExtratoPage({
               const href = sourceHref(m);
               const balance = runningById.get(m.id) ?? 0;
               const reversal = Boolean(m.reverses_id);
+              const canReverse = m.kind === "manual" && !reversal && !reversedIds.has(m.id);
 
               const row = (
                 <div className="flex items-center gap-3 px-4 py-3">
@@ -209,6 +214,8 @@ export default async function ExtratoPage({
                       saldo {currency.format(balance)}
                     </span>
                   </span>
+
+                  {canReverse && <ReverseManualButton id={m.id} />}
                 </div>
               );
 

@@ -168,7 +168,7 @@ create table if not exists cash_movements (
   direction text not null check (direction in ('in', 'out')),
   amount numeric(12,2) not null check (amount > 0),
   -- Separa os tipos de receita/despesa sem depender do texto da descrição.
-  kind text not null check (kind in ('opening', 'setup', 'monthly', 'payable')),
+  kind text not null check (kind in ('opening', 'setup', 'monthly', 'payable', 'manual')),
   description text not null,
   counterpart text,            -- nome do cliente ou fornecedor, congelado no momento do lançamento
 

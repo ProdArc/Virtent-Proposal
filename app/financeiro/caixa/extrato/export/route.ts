@@ -13,7 +13,7 @@ const brl = (n: number) => n.toFixed(2).replace(".", ",");
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
-const KINDS: MovementKind[] = ["opening", "setup", "monthly", "payable"];
+const KINDS: MovementKind[] = ["opening", "setup", "monthly", "payable", "manual"];
 
 /** Extrato em CSV, com o mesmo recorte da tela e o saldo corrente em cada linha. */
 export async function GET(request: NextRequest) {

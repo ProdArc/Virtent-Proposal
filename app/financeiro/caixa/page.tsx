@@ -9,6 +9,7 @@ import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
+import { ManualIncomeForm } from "./ManualIncomeForm";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -303,10 +304,13 @@ export default async function CaixaPage() {
           <BalanceChart series={chartSeries} />
         </section>
 
-        <OpeningBalanceForm
-          amount={opening ? (opening.direction === "in" ? Number(opening.amount) : -Number(opening.amount)) : 0}
-          date={opening ? opening.occurred_at.slice(0, 10) : today}
-        />
+        <div className="space-y-3">
+          <ManualIncomeForm />
+          <OpeningBalanceForm
+            amount={opening ? (opening.direction === "in" ? Number(opening.amount) : -Number(opening.amount)) : 0}
+            date={opening ? opening.occurred_at.slice(0, 10) : today}
+          />
+        </div>
       </div>
     </main>
   );
