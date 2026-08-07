@@ -258,15 +258,15 @@ export function billingEmailBlockedReason(
 
 /**
  * Envia a cobrança de implantação por e-mail com a NFe em anexo, e marca
- * `setup_email_sent_at` — próxima tentativa é bloqueada (implantação é
- * cobrada 1 única vez). Revalida as mesmas condições da UI (email + NFe +
- * link PIX) server-side, não confia só no botão já estar desabilitado no
- * cliente.
+ * `setup_email_sent_at`. Reenviar é permitido (ex: e-mail cadastrado errado
+ * na primeira vez) — a UI mostra a data do último envio e pede confirmação
+ * com a prévia do destinatário antes de disparar de novo. Revalida as mesmas
+ * condições da UI (email + NFe + link PIX) server-side, não confia só no
+ * botão já estar desabilitado no cliente.
  */
 export async function sendSetupEmail(client: FinancialClientRow): Promise<void> {
   const blockedReason = setupEmailBlockedReason(client);
   if (blockedReason) throw new Error(`Não é possível enviar: ${blockedReason}.`);
-  if (client.setup_email_sent_at) throw new Error("A cobrança de implantação já foi enviada.");
 
   const { to, subject, html } = renderSetupEmail(client);
   const attachment = await downloadNfe(client.setup_nfe_path!);
@@ -294,7 +294,6 @@ export async function sendBillingEmail(
 ): Promise<void> {
   const blockedReason = billingEmailBlockedReason(client, billing);
   if (blockedReason) throw new Error(`Não é possível enviar: ${blockedReason}.`);
-  if (billing.email_sent_at) throw new Error("A cobrança desta referência já foi enviada.");
 
   const { to, subject, html } = renderBillingEmail(client, billing);
   const attachment = await downloadNfe(billing.nfe_path!);

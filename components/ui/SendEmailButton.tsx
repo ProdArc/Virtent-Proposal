@@ -42,31 +42,39 @@ export function SendEmailButton({
 }) {
   const [open, setOpen] = useState(false);
 
-  if (sentAt) {
-    return (
-      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#065F46]">
-        E-mail enviado em {new Date(sentAt).toLocaleDateString("pt-BR")}
-      </span>
-    );
-  }
+  const sentBadge = sentAt && (
+    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#065F46]">
+      E-mail enviado em {new Date(sentAt).toLocaleDateString("pt-BR")}
+    </span>
+  );
 
   if (blockedReason) {
     return (
-      <span className="text-xs text-[#A1A1AA]">
-        {triggerLabel} indisponível — {blockedReason}
-      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        {sentBadge}
+        <span className="text-xs text-[#A1A1AA]">
+          {sentAt ? "Reenvio" : triggerLabel} indisponível — {blockedReason}
+        </span>
+      </div>
     );
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
-      >
-        {triggerLabel}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {sentBadge}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={
+            sentAt
+              ? "text-xs font-semibold text-[#065F46] hover:underline"
+              : "text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+          }
+        >
+          {sentAt ? "Reenviar" : triggerLabel}
+        </button>
+      </div>
 
       {open && (
         <div
