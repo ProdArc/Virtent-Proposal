@@ -17,7 +17,14 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const dynamic = "force-dynamic";
 
-export default async function CaixaPage() {
+export default async function CaixaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ until?: string }>;
+}) {
+  const sp = await searchParams;
+  const untilParam = sp.until && /^\d{4}-\d{2}-\d{2}$/.test(sp.until) ? sp.until : "";
+
   let movements: CashMovementRow[] = [];
   let balance = { balance: 0, total_in: 0, total_out: 0, movements: 0 };
   let opening: CashMovementRow | null = null;
@@ -68,6 +75,7 @@ export default async function CaixaPage() {
   let previstoPagar = 0;
   let proj7 = { receber: 0, pagar: 0 };
   let proj30 = { receber: 0, pagar: 0 };
+  let projCustom = { receber: 0, pagar: 0 };
 
   try {
     const [clients, billings, payables] = await Promise.all([
@@ -94,6 +102,18 @@ export default async function CaixaPage() {
           .reduce((s, c) => s + Number(c.setup_value), 0);
       target.pagar = openPayables
         .filter((p) => within(p.due_date, days))
+        .reduce((s, p) => s + remainingAmount(p), 0);
+    }
+
+    if (untilParam) {
+      const upTo = (due: string) => due <= untilParam;
+      projCustom.receber =
+        openBillings.filter((b) => upTo(b.due_date)).reduce((s, b) => s + calcBillingTotal(b).total_value, 0) +
+        openSetups
+          .filter((c) => upTo(c.setup_due_date ?? c.first_billing_date))
+          .reduce((s, c) => s + Number(c.setup_value), 0);
+      projCustom.pagar = openPayables
+        .filter((p) => upTo(p.due_date))
         .reduce((s, p) => s + remainingAmount(p), 0);
     }
   } catch {
@@ -245,16 +265,16 @@ export default async function CaixaPage() {
               Saldo de hoje mais o previsto a receber, menos o previsto a pagar, por vencimento
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { days: 7, data: proj7 },
-              { days: 30, data: proj30 },
-            ].map(({ days, data }) => {
+              { key: "7", label: "Em 7 dias", data: proj7 },
+              { key: "30", label: "Em 30 dias", data: proj30 },
+            ].map(({ key, label, data }) => {
               const projected = saldo + data.receber - data.pagar;
               return (
-                <div key={days} className="rounded-xl border border-border p-4">
+                <div key={key} className="rounded-xl border border-border p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-ink mb-3">
-                    Em {days} dias
+                    {label}
                   </p>
                   <dl className="space-y-1.5 mb-3">
                     <div className="flex items-baseline justify-between gap-3">
@@ -292,6 +312,81 @@ export default async function CaixaPage() {
                 </div>
               );
             })}
+
+            {/* Data escolhida — mesmo cálculo, mas até uma data qualquer em vez de N dias fixos */}
+            <div className="rounded-xl border border-border p-4">
+              <form action="/financeiro/caixa" className="mb-3 flex items-center gap-2">
+                <input
+                  name="until"
+                  type="date"
+                  min={today}
+                  defaultValue={untilParam || undefined}
+                  aria-label="Escolher data para projetar o saldo"
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-white px-2 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-lg bg-brand px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-hover transition-colors"
+                >
+                  Ver
+                </button>
+              </form>
+
+              {untilParam ? (
+                (() => {
+                  const projected = saldo + projCustom.receber - projCustom.pagar;
+                  const dateLabel = new Date(`${untilParam}T00:00:00`).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  });
+                  return (
+                    <>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-ink mb-3">
+                        Até {dateLabel}
+                      </p>
+                      <dl className="space-y-1.5 mb-3">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-xs text-secondary-ink">Saldo hoje</dt>
+                          <dd className="text-sm tabular-nums text-ink">{currency.format(saldo)}</dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-xs text-secondary-ink">A receber</dt>
+                          <dd className="text-sm font-semibold tabular-nums text-paid-ink">
+                            + {currency.format(projCustom.receber)}
+                          </dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-xs text-secondary-ink">A pagar</dt>
+                          <dd className="text-sm font-semibold tabular-nums text-overdue-ink">
+                            − {currency.format(projCustom.pagar)}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+                        <span className="text-xs font-semibold text-ink">Saldo projetado</span>
+                        <span
+                          className={`text-base font-bold tabular-nums ${
+                            projected >= 0 ? "text-paid-ink" : "text-overdue-ink"
+                          }`}
+                        >
+                          {currency.format(projected)}
+                        </span>
+                      </div>
+                      {projected < 0 && (
+                        <p className="mt-2 text-[11px] font-medium text-overdue-ink">
+                          O caixa fica negativo até essa data.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()
+              ) : (
+                <p className="text-xs text-secondary-ink leading-relaxed">
+                  Escolha uma data pra ver o saldo projetado até lá.
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
