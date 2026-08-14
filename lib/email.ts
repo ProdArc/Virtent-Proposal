@@ -47,6 +47,14 @@ const monthYearFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "nu
 const dateFmt = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR");
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** "a@x.com, b@y.com; c@z.com" -> ["a@x.com", "b@y.com", "c@z.com"] — o campo aceita vírgula ou ponto-e-vírgula. */
+function parseEmailList(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -199,7 +207,7 @@ export function renderSetupEmail(client: FinancialClientRow): EmailPreview {
     ${supportAndSignature()}
   `
   );
-  return { to: client.email ?? "", subject, html };
+  return { to: parseEmailList(client.email).join(", "), subject, html };
 }
 
 /** Prévia da cobrança de mensalidade de um ciclo — enviada no máximo 1 vez por referência (ver `billing.email_sent_at`). */
@@ -235,12 +243,12 @@ export function renderBillingEmail(client: FinancialClientRow, billing: Financia
     ${supportAndSignature()}
   `
   );
-  return { to: client.email ?? "", subject, html };
+  return { to: parseEmailList(client.email).join(", "), subject, html };
 }
 
 /** Por que o botão de envio está desabilitado, ou null se está tudo pronto pra enviar. */
 export function setupEmailBlockedReason(client: FinancialClientRow): string | null {
-  if (!client.email) return "cadastre o e-mail da unidade";
+  if (parseEmailList(client.email).length === 0) return "cadastre o e-mail da unidade";
   if (!client.setup_nfe_path) return "anexe a NFe da implantação";
   if (!client.setup_pix_link) return "informe o link de cobrança PIX da implantação";
   return null;
@@ -250,7 +258,7 @@ export function billingEmailBlockedReason(
   client: FinancialClientRow,
   billing: FinancialBillingRow
 ): string | null {
-  if (!client.email) return "cadastre o e-mail da unidade";
+  if (parseEmailList(client.email).length === 0) return "cadastre o e-mail da unidade";
   if (!billing.nfe_path) return "anexe a NFe desta cobrança";
   if (!billing.pix_link) return "informe o link de cobrança PIX desta cobrança";
   return null;
@@ -268,13 +276,13 @@ export async function sendSetupEmail(client: FinancialClientRow): Promise<void> 
   const blockedReason = setupEmailBlockedReason(client);
   if (blockedReason) throw new Error(`Não é possível enviar: ${blockedReason}.`);
 
-  const { to, subject, html } = renderSetupEmail(client);
+  const { subject, html } = renderSetupEmail(client);
   const attachment = await downloadNfe(client.setup_nfe_path!);
 
   const resend = getResendClient();
   const { error } = await resend.emails.send({
     from: requireFromAddress(),
-    to,
+    to: parseEmailList(client.email),
     subject,
     html,
     attachments: [{ filename: attachment.filename, content: attachment.content }],
@@ -295,13 +303,13 @@ export async function sendBillingEmail(
   const blockedReason = billingEmailBlockedReason(client, billing);
   if (blockedReason) throw new Error(`Não é possível enviar: ${blockedReason}.`);
 
-  const { to, subject, html } = renderBillingEmail(client, billing);
+  const { subject, html } = renderBillingEmail(client, billing);
   const attachment = await downloadNfe(billing.nfe_path!);
 
   const resend = getResendClient();
   const { error } = await resend.emails.send({
     from: requireFromAddress(),
-    to,
+    to: parseEmailList(client.email),
     subject,
     html,
     attachments: [{ filename: attachment.filename, content: attachment.content }],
