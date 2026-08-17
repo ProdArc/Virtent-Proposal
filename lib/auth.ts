@@ -8,6 +8,7 @@ const USERS: Record<string, string | undefined> = {
   ryan: process.env.ADMIN_PASSWORD,
   lucas: process.env.LUCAS_PASSWORD,
   fratti: process.env.FRATTI_PASSWORD,
+  duvaz: process.env.DUVAZ_PASSWORD,
 };
 
 export const SESSION_COOKIE = "virtent_session";
