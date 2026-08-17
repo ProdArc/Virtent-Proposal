@@ -156,12 +156,20 @@ export default async function CaixaPage({
             </p>
             <h1 className="text-2xl font-extrabold tracking-tight text-ink">Controle financeiro</h1>
           </div>
-          <Link
-            href="/financeiro/caixa/extrato"
-            className="shrink-0 inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors"
-          >
-            Ver extrato
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/financeiro/caixa/dre"
+              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg border border-border bg-white text-ink hover:bg-surface transition-colors"
+            >
+              Ver DRE
+            </Link>
+            <Link
+              href="/financeiro/caixa/extrato"
+              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors"
+            >
+              Ver extrato
+            </Link>
+          </div>
         </div>
 
         <div className="mb-5">
@@ -226,7 +234,12 @@ export default async function CaixaPage({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-bold text-ink">Resultado do mês</h2>
-              <p className="text-xs text-secondary-ink">Entradas menos saídas do mês corrente</p>
+              <p className="text-xs text-secondary-ink">
+                Entradas menos saídas do mês corrente ·{" "}
+                <Link href="/financeiro/caixa/dre" className="font-semibold text-brand hover:text-brand-hover transition-colors">
+                  ver DRE completo
+                </Link>
+              </p>
             </div>
             <p
               className={`text-2xl font-extrabold tabular-nums ${
