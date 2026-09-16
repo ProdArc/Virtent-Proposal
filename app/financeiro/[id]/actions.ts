@@ -16,6 +16,7 @@ import {
   parseDecimalInput,
   setBillingPaid,
   setSetupPaid,
+  updateBillingMonthlyValue,
   updateBillingPixLink,
   updateBillingRevenue,
   updateFinancialClient,
@@ -134,6 +135,22 @@ export async function updateBillingRevenueAction(formData: FormData): Promise<vo
 
   const revenueAmount = parseDecimalInput(revenueRaw) ?? 0;
   await updateBillingRevenue(billingId, revenueAmount);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function updateBillingMonthlyValueAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
+  if (!billingId || !clientId) throw new Error("Cobrança inválida.");
+
+  const monthlyValue = parseDecimalInput(monthlyValueRaw);
+  if (monthlyValue === null) throw new Error("Valor inválido.");
+
+  await updateBillingMonthlyValue(billingId, monthlyValue);
   revalidatePath(`/financeiro/${clientId}`);
 }
 

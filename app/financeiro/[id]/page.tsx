@@ -29,6 +29,7 @@ import {
   sendSetupEmailAction,
   toggleBillingPaidAction,
   toggleSetupPaidAction,
+  updateBillingMonthlyValueAction,
   updateBillingPixLinkAction,
   updateBillingRevenueAction,
   updateSetupPixLinkAction,
@@ -195,6 +196,23 @@ export default async function FinanceiroClientPage({
 
         <div className="px-4 pb-4">
           <div className="border-t border-[#E4E4E7] pt-4 flex flex-wrap items-end gap-3 mb-4">
+            <form action={updateBillingMonthlyValueAction} className="flex items-end gap-2">
+              <input type="hidden" name="billingId" value={b.id} />
+              <input type="hidden" name="clientId" value={client.id} />
+              <div>
+                <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                  Mensalidade deste ciclo
+                </label>
+                <CurrencyInput name="monthlyValue" defaultValue={b.monthly_value} className="w-36" />
+              </div>
+              <SubmitButton
+                pendingLabel="Salvando..."
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+              >
+                Salvar
+              </SubmitButton>
+            </form>
+
             <form action={updateBillingRevenueAction} className="flex items-end gap-2">
               <input type="hidden" name="billingId" value={b.id} />
               <input type="hidden" name="clientId" value={client.id} />

@@ -527,6 +527,24 @@ export async function updateBillingRevenue(id: string, revenueAmount: number): P
   }
 }
 
+/**
+ * Corrige a mensalidade de UM ciclo específico, sem tocar no cadastro do
+ * cliente nem nos demais ciclos — cada cobrança guarda seu próprio valor
+ * congelado (ver `ensureCurrentBilling`), então mudar o valor no cliente não
+ * alcança um ciclo que já foi gerado com o valor antigo. É pra esse caso.
+ */
+export async function updateBillingMonthlyValue(id: string, monthlyValue: number): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_billings")
+    .update({ monthly_value: monthlyValue, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao atualizar mensalidade da cobrança "${id}": ${error.message}`);
+  }
+}
+
 export async function updateBillingPixLink(id: string, pixLink: string | null): Promise<void> {
   const supabase = getSupabaseServerClient();
   const { error } = await supabase
