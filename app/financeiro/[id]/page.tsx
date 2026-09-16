@@ -7,6 +7,7 @@ import {
   getFinancialClient,
   getNfeSignedUrl,
   listBillingsForClient,
+  nextCycleDueDate,
   type FinancialBillingRow,
 } from "@/lib/financial";
 import { billingEmailBlockedReason, renderBillingEmail, renderSetupEmail, setupEmailBlockedReason } from "@/lib/email";
@@ -23,6 +24,7 @@ import {
   deleteNfeAction,
   deleteSetupComprovanteAction,
   deleteSetupNfeAction,
+  generateNextBillingAction,
   sendBillingEmailAction,
   sendSetupEmailAction,
   toggleBillingPaidAction,
@@ -132,6 +134,17 @@ export default async function FinanceiroClientPage({
   // passados já pagos vão pro histórico colapsado.
   const visibleBillings = billings.filter((b) => !b.paid || isSameCycle(b.due_date, now));
   const historicalBillings = billings.filter((b) => b.paid && !isSameCycle(b.due_date, now));
+
+  // Ciclo que o botão "Gerar próxima mensalidade" criaria — além do que
+  // ensureCurrentBilling já adianta automaticamente, pra quando o usuário
+  // quer forçar a mão (ver lib/financial.ts).
+  const lastDueDate = billings.reduce(
+    (latest, b) => (b.due_date > latest ? b.due_date : latest),
+    client.first_billing_date
+  );
+  const nextCycleDate =
+    billings.length === 0 ? client.first_billing_date : nextCycleDueDate(lastDueDate, client.due_day);
+  const nextCycleAlreadyExists = billings.some((b) => b.due_date.slice(0, 7) === nextCycleDate.slice(0, 7));
 
   function billingCard(b: FinancialBillingRow) {
     const { commission_value, total_value } = calcBillingTotal(b);
@@ -610,9 +623,26 @@ export default async function FinanceiroClientPage({
 
         {/* Cobranças mensais */}
         <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 mt-6 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B] mb-4">
-            Cobranças mensais
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B]">
+              Cobranças mensais
+            </p>
+            {nextCycleAlreadyExists ? (
+              <span className="text-xs text-[#A1A1AA]">
+                {cycleLabel(nextCycleDate)} já foi gerada
+              </span>
+            ) : (
+              <form action={generateNextBillingAction}>
+                <input type="hidden" name="clientId" value={client.id} />
+                <button
+                  type="submit"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                >
+                  Gerar {cycleLabel(nextCycleDate)}
+                </button>
+              </form>
+            )}
+          </div>
           <p className="text-xs text-[#A1A1AA] mb-5">
             Total cobrado por ciclo = mensalidade ({currency.format(client.monthly_value)}) +
             comissão de {client.commission_pct}% sobre o valor arrecadado informado abaixo. Clique numa

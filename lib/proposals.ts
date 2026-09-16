@@ -65,6 +65,15 @@ export async function markProposalViewed(id: string): Promise<void> {
   }
 }
 
+export async function deleteProposal(id: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.from("proposals").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao excluir proposta "${id}": ${error.message}`);
+  }
+}
+
 export interface NewProposalInput {
   clientName: string;
   consultantName: string;

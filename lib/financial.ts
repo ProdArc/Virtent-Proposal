@@ -321,7 +321,7 @@ function cycleDueDatePlusMonths(baseDueDateIso: string, monthsToAdd: number, due
   return new Date(Date.UTC(year, month - 1 + monthsToAdd, day)).toISOString().slice(0, 10);
 }
 
-function nextCycleDueDate(previousDueDateIso: string, dueDay: number): string {
+export function nextCycleDueDate(previousDueDateIso: string, dueDay: number): string {
   return cycleDueDatePlusMonths(previousDueDateIso, 1, dueDay);
 }
 
@@ -381,6 +381,14 @@ function hasUserData(b: {
  * UNIQUE(client_id, due_date) no banco é a trava definitiva (ver
  * supabase/migrations/006), mas esta função não depende dela pra se manter
  * consistente.
+ *
+ * A checagem de "já existe" é por MÊS (due_date.slice(0,7)), não pela data
+ * exata — de propósito. Se o dia de vencimento do cliente mudar depois que o
+ * ciclo do mês já foi gerado, a data-alvo recalculada cai num dia diferente
+ * e deixaria de "casar" com a linha existente, criando uma segunda cobrança
+ * pro mesmo mês (foi o que aconteceu quando um cliente teve o valor da
+ * mensalidade ajustado). Por mês é o invariante certo: nunca deveria existir
+ * mais de uma cobrança pro mesmo ciclo mensal.
  */
 export async function ensureCurrentBilling(client: FinancialClientRow): Promise<void> {
   const supabase = getSupabaseServerClient();
@@ -414,10 +422,10 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
   }
 
   const existingRows = existing ?? [];
-  const existingDates = new Set(existingRows.map((r) => r.due_date));
+  const existingMonths = new Set(existingRows.map((r) => r.due_date.slice(0, 7)));
 
   // 3. Insere o que falta, tudo de uma vez (uma ida ao banco, não uma por ciclo).
-  const missing = targetDueDates.filter((d) => !existingDates.has(d));
+  const missing = targetDueDates.filter((d) => !existingMonths.has(d.slice(0, 7)));
   if (missing.length > 0) {
     const { error: insertError } = await withRetry(async () =>
       supabase.from("financial_billings").insert(
@@ -438,16 +446,19 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
     }
   }
 
-  // 4. Auto-cura: remove duplicatas do mesmo ciclo que tenham escapado (por
-  //    corrida antes da constraint existir, ou por dados legados). Só apaga
-  //    linhas vazias — nunca uma com baixa, anexo, PIX ou e-mail enviado.
-  const byDate = new Map<string, typeof existingRows>();
+  // 4. Auto-cura: remove duplicatas do mesmo ciclo (mesmo mês, mesmo se a data
+  //    exata difere — ver comentário acima) que tenham escapado, por corrida
+  //    antes da constraint existir, dados legados, ou o due_day do cliente
+  //    ter mudado. Só apaga linhas vazias — nunca uma com baixa, anexo, PIX
+  //    ou e-mail enviado.
+  const byMonth = new Map<string, typeof existingRows>();
   for (const row of existingRows) {
-    byDate.set(row.due_date, [...(byDate.get(row.due_date) ?? []), row]);
+    const monthKey = row.due_date.slice(0, 7);
+    byMonth.set(monthKey, [...(byMonth.get(monthKey) ?? []), row]);
   }
 
   const idsToDelete: string[] = [];
-  for (const rows of byDate.values()) {
+  for (const rows of byMonth.values()) {
     if (rows.length < 2) continue;
     // Mantém a que tem dado do usuário; se nenhuma tiver, mantém a mais antiga.
     const keeper = rows.find(hasUserData) ?? rows[0];
@@ -462,6 +473,45 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
     if (deleteError) {
       throw new Error(`Falha ao remover cobranças duplicadas: ${deleteError.message}`);
     }
+  }
+}
+
+/**
+ * Gera manualmente o próximo ciclo, além do que `ensureCurrentBilling` já
+ * cria automaticamente — pra quando o usuário quer adiantar (ex: já quer
+ * anexar NFe do mês seguinte) ou precisa recriar um ciclo que foi excluído
+ * de propósito. O "próximo" é sempre a partir da última cobrança já
+ * existente (não da data de hoje), pra nunca pular um mês.
+ */
+export async function generateNextBilling(clientId: string): Promise<void> {
+  const client = await getFinancialClient(clientId);
+  if (!client) throw new Error("Cliente não encontrado.");
+
+  const existing = await listBillingsForClient(clientId);
+  const lastDueDate = existing.reduce(
+    (latest, b) => (b.due_date > latest ? b.due_date : latest),
+    client.first_billing_date
+  );
+  // Sem nenhuma cobrança ainda: o "próximo" ciclo é o primeiro mesmo.
+  const nextDueDate =
+    existing.length === 0 ? client.first_billing_date : nextCycleDueDate(lastDueDate, client.due_day);
+
+  if (existing.some((b) => b.due_date.slice(0, 7) === nextDueDate.slice(0, 7))) {
+    throw new Error("Esse ciclo já existe.");
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.from("financial_billings").insert({
+    client_id: client.id,
+    due_date: nextDueDate,
+    monthly_value: client.monthly_value,
+    commission_pct: client.commission_pct,
+    revenue_amount: 0,
+  });
+
+  if (error) {
+    if (error.code === "23505") throw new Error("Esse ciclo já existe.");
+    throw new Error(`Falha ao gerar próxima mensalidade: ${error.message}`);
   }
 }
 

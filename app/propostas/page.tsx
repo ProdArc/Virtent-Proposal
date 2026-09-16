@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { listProposals, type ProposalListItem } from "@/lib/proposals";
 import { LogoutButton } from "@/components/ui/LogoutButton";
+import { ConfirmButton } from "@/app/financeiro/[id]/ConfirmButton";
+import { deleteProposalAction } from "./actions";
 
 // Ferramenta interna de consulta — sem os efeitos/animações da proposta em si,
 // só a paleta base do site pra consistência visual mínima. Acesso protegido
@@ -97,32 +99,45 @@ export default async function PropostasPage() {
         ) : (
           <div className="rounded-2xl border border-[#E4E4E7] bg-white overflow-hidden">
             {proposals.map((p) => (
-              <Link
+              <div
                 key={p.id}
-                href={`/p/${p.slug}`}
                 className="flex items-center justify-between gap-4 px-5 py-4 border-b border-[#E4E4E7] last:border-b-0 hover:bg-[#F9FBF8] transition-colors duration-150"
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#18181B] truncate">
-                    {p.client_name}
-                  </p>
-                  <p className="text-xs text-[#A1A1AA] font-[family-name:var(--font-geist-mono)] truncate">
-                    /p/{p.slug}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <span className="text-xs text-[#A1A1AA]">
-                    {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </span>
-                  <span
-                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
-                      STATUS_STYLE[p.status] ?? "bg-[#F4F4F5] text-[#71717A]"
-                    }`}
+                <Link
+                  href={`/p/${p.slug}`}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-4"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#18181B] truncate">
+                      {p.client_name}
+                    </p>
+                    <p className="text-xs text-[#A1A1AA] font-[family-name:var(--font-geist-mono)] truncate">
+                      /p/{p.slug}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="text-xs text-[#A1A1AA]">
+                      {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                    </span>
+                    <span
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                        STATUS_STYLE[p.status] ?? "bg-[#F4F4F5] text-[#71717A]"
+                      }`}
+                    >
+                      {STATUS_LABEL[p.status] ?? p.status}
+                    </span>
+                  </div>
+                </Link>
+                <form action={deleteProposalAction} className="shrink-0">
+                  <input type="hidden" name="id" value={p.id} />
+                  <ConfirmButton
+                    confirmText={`Excluir a proposta de "${p.client_name}"? O link /p/${p.slug} para de funcionar imediatamente. Essa ação não pode ser desfeita.`}
+                    className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
                   >
-                    {STATUS_LABEL[p.status] ?? p.status}
-                  </span>
-                </div>
-              </Link>
+                    Excluir
+                  </ConfirmButton>
+                </form>
+              </div>
             ))}
           </div>
         )}

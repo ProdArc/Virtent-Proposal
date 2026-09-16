@@ -10,6 +10,7 @@ import {
   deleteFinancialClient,
   deleteSetupComprovante,
   deleteSetupNfe,
+  generateNextBilling,
   getBillingById,
   getFinancialClient,
   parseDecimalInput,
@@ -158,6 +159,18 @@ export async function deleteBillingAction(formData: FormData): Promise<void> {
   if (!billingId || !clientId) throw new Error("Cobrança inválida.");
 
   await deleteBilling(billingId);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+/** Além da geração automática (ensureCurrentBilling), deixa forçar o próximo ciclo na mão. */
+export async function generateNextBillingAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const clientId = String(formData.get("clientId") || "");
+  if (!clientId) throw new Error("Cliente inválido.");
+
+  await generateNextBilling(clientId);
   revalidatePath(`/financeiro/${clientId}`);
 }
 
