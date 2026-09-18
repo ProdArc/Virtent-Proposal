@@ -22,6 +22,7 @@ const FIELDS: {
 export function NewProposalForm() {
   const [state, formAction, pending] = useActionState(createProposalAction, initialState);
   const [copied, setCopied] = useState(false);
+  const [billingModel, setBillingModel] = useState<"comissao" | "fixa">("comissao");
 
   if (state.success) {
     // Nunca usar window.location.origin sozinho aqui: se alguém abrir essa
@@ -106,6 +107,33 @@ export function NewProposalForm() {
             />
           </div>
         ))}
+
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
+            Modelo de cobrança
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "comissao" as const, label: "Mensalidade + comissão sobre arrecadação" },
+              { key: "fixa" as const, label: "Mensalidade fixa (sem comissão)" },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setBillingModel(opt.key)}
+                aria-pressed={billingModel === opt.key}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  billingModel === opt.key
+                    ? "border-[#065F46] bg-[#065F46] text-white"
+                    : "border-[#E4E4E7] bg-white text-[#71717A] hover:text-[#18181B]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="billingModel" value={billingModel} />
+        </div>
       </div>
 
       {state.error && (

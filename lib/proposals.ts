@@ -81,6 +81,8 @@ export interface NewProposalInput {
   validUntil: string;
   monthlyPrice: string;
   setupPrice: string;
+  /** false = mensalidade fixa, sem a linha de comissão sobre arrecadação. */
+  includeCommission: boolean;
 }
 
 function slugify(text: string): string {
@@ -114,6 +116,11 @@ export async function createProposal(input: NewProposalInput): Promise<{ slug: s
   proposalContent.proposal.validUntil = input.validUntil;
   proposalContent.investimento.plan.price = input.monthlyPrice;
   proposalContent.investimento.plan.setupPrice = input.setupPrice;
+  if (!input.includeCommission) {
+    // InvestimentoSection só mostra a linha se commissionLabel existir.
+    proposalContent.investimento.plan.commissionLabel = "";
+    proposalContent.investimento.plan.commissionValue = "";
+  }
   proposalContent.meta.title = `Proposta Comercial - Virtent | ${input.clientName}`;
   proposalContent.meta.description = `Proposta de operação virtual Virtent no WhatsApp para ${input.clientName}.`;
 

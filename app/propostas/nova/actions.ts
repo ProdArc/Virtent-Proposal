@@ -25,6 +25,7 @@ export async function createProposalAction(
   const validUntil = String(formData.get("validUntil") || "").trim();
   const monthlyPrice = String(formData.get("monthlyPrice") || "").trim();
   const setupPrice = String(formData.get("setupPrice") || "").trim();
+  const includeCommission = String(formData.get("billingModel") || "") !== "fixa";
 
   if (!clientName || !consultantName || !date || !validUntil || !monthlyPrice || !setupPrice) {
     return { error: "Preencha todos os campos." };
@@ -38,6 +39,7 @@ export async function createProposalAction(
       validUntil,
       monthlyPrice,
       setupPrice,
+      includeCommission,
     });
     return { success: { slug } };
   } catch (err) {
