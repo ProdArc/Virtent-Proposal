@@ -9,7 +9,13 @@ import { CnpjInput } from "@/components/ui/CnpjInput";
 const initialState: FormActionState = {};
 const DUE_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
-export function EditClientForm({ client }: { client: FinancialClientRow }) {
+export function EditClientForm({
+  client,
+  segmentSuggestions,
+}: {
+  client: FinancialClientRow;
+  segmentSuggestions: string[];
+}) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(updateClientAction, initialState);
 
@@ -61,6 +67,22 @@ export function EditClientForm({ client }: { client: FinancialClientRow }) {
             className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
           />
           <p className="mt-1 text-[11px] text-[#A1A1AA]">Separe vários e-mails por vírgula.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-[#52525B] mb-1.5">Segmento</label>
+          <input
+            name="segment"
+            type="text"
+            list="segment-suggestions"
+            defaultValue={client.segment ?? ""}
+            placeholder="Ex: Franquia, Academia, Clínica..."
+            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+          />
+          <datalist id="segment-suggestions">
+            {segmentSuggestions.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </div>
         <div>
           <label className="block text-xs font-semibold text-[#52525B] mb-1.5">

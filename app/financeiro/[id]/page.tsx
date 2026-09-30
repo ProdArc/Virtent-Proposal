@@ -7,6 +7,7 @@ import {
   getFinancialClient,
   getNfeSignedUrl,
   listBillingsForClient,
+  listFinancialClients,
   nextCycleDueDate,
   type FinancialBillingRow,
 } from "@/lib/financial";
@@ -27,6 +28,7 @@ import {
   generateNextBillingAction,
   sendBillingEmailAction,
   sendSetupEmailAction,
+  setClientCanceledAction,
   toggleBillingPaidAction,
   toggleSetupPaidAction,
   updateBillingMonthlyValueAction,
@@ -96,6 +98,16 @@ export default async function FinanceiroClientPage({
 
   await ensureCurrentBilling(client);
   const billings = await listBillingsForClient(id);
+
+  let segmentSuggestions: string[] = [];
+  try {
+    const allClients = await listFinancialClients();
+    segmentSuggestions = [
+      ...new Set(allClients.map((c) => c.segment).filter((s): s is string => Boolean(s))),
+    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  } catch {
+    segmentSuggestions = [];
+  }
 
   const nfeUrls: Record<string, string> = {};
   const comprovanteUrls: Record<string, string> = {};
@@ -434,27 +446,51 @@ export default async function FinanceiroClientPage({
               <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#065F46] mb-1">
                 Virtent
               </p>
-              <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B] truncate">
-                {client.name}
-              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B] truncate">
+                  {client.name}
+                </h1>
+                {client.canceled_at && (
+                  <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#71717A]">
+                    Cancelado
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
                 {client.cnpj && <p className="text-xs text-[#A1A1AA]">CNPJ {client.cnpj}</p>}
                 {client.email && <p className="text-xs text-[#A1A1AA]">{client.email}</p>}
+                {client.segment && <p className="text-xs text-[#A1A1AA]">{client.segment}</p>}
               </div>
             </div>
           </div>
-          <form action={deleteClientAction} className="shrink-0">
-            <input type="hidden" name="id" value={client.id} />
-            <ConfirmButton
-              confirmText={`Excluir "${client.name}" e todas as cobranças associadas? Essa ação não pode ser desfeita.`}
-              className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
-            >
-              Excluir cliente
-            </ConfirmButton>
-          </form>
+          <div className="flex shrink-0 items-center gap-4">
+            <form action={setClientCanceledAction}>
+              <input type="hidden" name="id" value={client.id} />
+              <input type="hidden" name="canceled" value={(!client.canceled_at).toString()} />
+              <ConfirmButton
+                confirmText={
+                  client.canceled_at
+                    ? `Reativar "${client.name}"? A geração automática de mensalidade volta a valer a partir de agora.`
+                    : `Cancelar "${client.name}"? Para de gerar mensalidade nova (automática ou manual), mas o histórico e o que já está em aberto continuam intactos.`
+                }
+                className="text-xs font-medium text-[#71717A] hover:text-[#18181B] transition-colors"
+              >
+                {client.canceled_at ? "Reativar cliente" : "Cancelar cliente"}
+              </ConfirmButton>
+            </form>
+            <form action={deleteClientAction}>
+              <input type="hidden" name="id" value={client.id} />
+              <ConfirmButton
+                confirmText={`Excluir "${client.name}" e todas as cobranças associadas? Essa ação não pode ser desfeita.`}
+                className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+              >
+                Excluir cliente
+              </ConfirmButton>
+            </form>
+          </div>
         </div>
 
-        <EditClientForm client={client} />
+        <EditClientForm client={client} segmentSuggestions={segmentSuggestions} />
 
         {/* Implantação */}
         <details
@@ -645,7 +681,9 @@ export default async function FinanceiroClientPage({
             <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B]">
               Cobranças mensais
             </p>
-            {nextCycleAlreadyExists ? (
+            {client.canceled_at ? (
+              <span className="text-xs text-[#A1A1AA]">Cliente cancelado — sem geração de ciclo novo</span>
+            ) : nextCycleAlreadyExists ? (
               <span className="text-xs text-[#A1A1AA]">
                 {cycleLabel(nextCycleDate)} já foi gerada
               </span>

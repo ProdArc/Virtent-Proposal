@@ -74,7 +74,14 @@ export function ClientCard({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-ink">{client.name}</span>
+          <span className="flex items-center gap-1.5 min-w-0">
+            <span className="block truncate text-sm font-semibold text-ink">{client.name}</span>
+            {client.canceled_at && (
+              <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-neutral-bg text-secondary-ink">
+                Cancelado
+              </span>
+            )}
+          </span>
           <span className={`block truncate text-[11.5px] font-medium ${ACTION_CLASS[status.action.tone]}`}>
             {status.action.label}
           </span>
@@ -144,6 +151,14 @@ export function ClientCard({
               {currency.format(client.setup_value)}
             </p>
           </div>
+          {client.segment && (
+            <div>
+              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+                Segmento
+              </p>
+              <p className="text-sm font-semibold text-ink">{client.segment}</p>
+            </div>
+          )}
         </div>
 
         {status.blockers.length > 0 && (

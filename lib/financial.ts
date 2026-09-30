@@ -19,6 +19,8 @@ export interface FinancialClientRow {
   commission_pct: number;
   due_day: number;
   first_billing_date: string;
+  segment: string | null;
+  canceled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -93,6 +95,7 @@ export interface NewFinancialClientInput {
   dueDay: number;
   firstBillingDate: string;
   commissionPct: number;
+  segment: string | null;
 }
 
 export async function listFinancialClients(): Promise<FinancialClientRow[]> {
@@ -213,6 +216,7 @@ export async function createFinancialClient(input: NewFinancialClientInput): Pro
       due_day: input.dueDay,
       first_billing_date: input.firstBillingDate,
       commission_pct: input.commissionPct,
+      segment: input.segment,
     })
     .select("id")
     .single();
@@ -241,12 +245,34 @@ export async function updateFinancialClient(
       due_day: input.dueDay,
       first_billing_date: input.firstBillingDate,
       commission_pct: input.commissionPct,
+      segment: input.segment,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (error) {
     throw new Error(`Falha ao atualizar cliente financeiro "${id}": ${error.message}`);
+  }
+}
+
+/**
+ * Cancela (ou reativa) um cliente. Diferente de excluir: o histórico de
+ * cobranças e o saldo de caixa continuam intactos, e cobranças já em aberto
+ * seguem cobráveis normalmente — só para a geração automática (e a manual,
+ * ver `generateNextBilling`) de ciclos novos daqui pra frente.
+ */
+export async function setClientCanceled(id: string, canceled: boolean): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({
+      canceled_at: canceled ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao atualizar status do cliente "${id}": ${error.message}`);
   }
 }
 
@@ -391,6 +417,11 @@ function hasUserData(b: {
  * mais de uma cobrança pro mesmo ciclo mensal.
  */
 export async function ensureCurrentBilling(client: FinancialClientRow): Promise<void> {
+  // Cliente cancelado: não gera ciclo novo nenhum, automático ou não — é
+  // exatamente o que "cancelar" significa. O histórico e o que já está em
+  // aberto continuam intactos.
+  if (client.canceled_at) return;
+
   const supabase = getSupabaseServerClient();
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -486,6 +517,7 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
 export async function generateNextBilling(clientId: string): Promise<void> {
   const client = await getFinancialClient(clientId);
   if (!client) throw new Error("Cliente não encontrado.");
+  if (client.canceled_at) throw new Error("Cliente cancelado não gera cobrança nova.");
 
   const existing = await listBillingsForClient(clientId);
   const lastDueDate = existing.reduce(

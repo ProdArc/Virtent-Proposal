@@ -17,7 +17,7 @@ function suggestFirstBillingDate(dueDay: number): string {
   return suggested.toISOString().slice(0, 10);
 }
 
-export function NewClientForm() {
+export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: string[] }) {
   const [state, formAction, pending] = useActionState(createFinancialClientAction, initialState);
   const [dueDay, setDueDay] = useState(10);
   const [firstBillingDate, setFirstBillingDate] = useState(() => suggestFirstBillingDate(10));
@@ -67,6 +67,25 @@ export function NewClientForm() {
             className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
           />
           <p className="mt-1 text-[11px] text-[#A1A1AA]">Separe vários e-mails por vírgula.</p>
+        </div>
+
+        <div>
+          <label htmlFor="segment" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+            Segmento
+          </label>
+          <input
+            id="segment"
+            name="segment"
+            type="text"
+            list="segment-suggestions"
+            placeholder="Ex: Franquia, Academia, Clínica..."
+            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+          />
+          <datalist id="segment-suggestions">
+            {segmentSuggestions.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </div>
 
         <div>

@@ -20,6 +20,7 @@ export async function createFinancialClientAction(
   const name = String(formData.get("name") || "").trim();
   const cnpj = String(formData.get("cnpj") || "").trim();
   const email = String(formData.get("email") || "").trim();
+  const segment = String(formData.get("segment") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
@@ -60,6 +61,7 @@ export async function createFinancialClientAction(
       dueDay,
       firstBillingDate,
       commissionPct,
+      segment: segment || null,
     });
     clientId = created.id;
   } catch (err) {

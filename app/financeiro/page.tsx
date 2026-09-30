@@ -15,6 +15,7 @@ import {
   type UrgencyGroup,
 } from "@/lib/financeiro-status";
 import { LogoutButton } from "@/components/ui/LogoutButton";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import { ClientCard } from "@/components/financeiro/ClientCard";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { StatusChips } from "@/components/financeiro/StatusChips";
@@ -23,6 +24,8 @@ import { UrgencyGroupHeader } from "@/components/financeiro/UrgencyGroupHeader";
 import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const VALID_FILTERS: StatusFilter[] = ["", "urgent", "overdue", "upcoming", "ok"];
 
@@ -41,9 +44,9 @@ export const dynamic = "force-dynamic";
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; ref?: string }>;
 }) {
-  const { status, q } = await searchParams;
+  const { status, q, ref } = await searchParams;
   const activeFilter: StatusFilter = VALID_FILTERS.includes(status as StatusFilter)
     ? (status as StatusFilter)
     : "";
@@ -86,11 +89,25 @@ export default async function FinanceiroPage({
     status: clientStatus(client, billingsByClient.get(client.id) ?? [], today),
   }));
 
+  // Referências (meses de cobrança) disponíveis pro filtro — união de todas as
+  // cobranças já geradas, mais recente primeiro.
+  const refSet = new Set(billings.map((b) => b.due_date.slice(0, 7)));
+  const availableRefs = [...refSet].sort((a, b) => b.localeCompare(a));
+  const activeRef = ref && refSet.has(ref) ? ref : "";
+  const REF_OPTIONS = [
+    { value: "", label: "Todas as referências" },
+    ...availableRefs.map((m) => ({
+      value: m,
+      label: capitalize(monthLongFmt.format(new Date(`${m}-01T00:00:00`))),
+    })),
+  ];
+
   // Totais e contagens dos chips vêm da base inteira, não do recorte visível —
   // senão o número do filtro mudaria conforme o próprio filtro.
   const totalOpen = enriched.reduce((s, e) => s + e.status.openTotal, 0);
   const totalOverdue = enriched.reduce((s, e) => s + e.status.overdueCount, 0);
   const totalUrgent = enriched.reduce((s, e) => s + e.status.urgentCount, 0);
+  const activeClientsCount = clients.filter((c) => !c.canceled_at).length;
 
   const counts = Object.fromEntries(
     VALID_FILTERS.map((f) => [f, enriched.filter((e) => matchesFilter(e.status, f)).length])
@@ -100,7 +117,8 @@ export default async function FinanceiroPage({
   const visible = enriched.filter(
     (e) =>
       matchesFilter(e.status, activeFilter) &&
-      (needle === "" || normalize(e.client.name).includes(needle))
+      (needle === "" || normalize(e.client.name).includes(needle)) &&
+      (activeRef === "" || e.billings.some((b) => b.due_date.slice(0, 7) === activeRef))
   );
 
   // Ordena por urgência; dentro de cada faixa, alfabético.
@@ -115,6 +133,7 @@ export default async function FinanceiroPage({
     const params = new URLSearchParams();
     if (filter) params.set("status", filter);
     if (search) params.set("q", search);
+    if (activeRef) params.set("ref", activeRef);
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
@@ -162,7 +181,12 @@ export default async function FinanceiroPage({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           <SummaryCard
             label="Clientes"
-            value={String(clients.length)}
+            value={String(activeClientsCount)}
+            hint={
+              activeClientsCount !== clients.length
+                ? `${clients.length - activeClientsCount} cancelado${clients.length - activeClientsCount === 1 ? "" : "s"} à parte`
+                : undefined
+            }
             href={hrefFor("")}
             active={activeFilter === ""}
           />
@@ -192,10 +216,21 @@ export default async function FinanceiroPage({
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
-          <StatusChips active={activeFilter} counts={counts} search={search} />
-          <div className="w-full sm:w-64 shrink-0">
-            <SearchInput initialValue={search} />
+        <div className="flex flex-col gap-3 mb-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <StatusChips active={activeFilter} counts={counts} search={search} reference={activeRef} />
+            <div className="w-full sm:w-64 shrink-0">
+              <SearchInput initialValue={search} />
+            </div>
+          </div>
+          <div className="w-full sm:w-64">
+            <FilterSelect
+              name="ref"
+              label="Referência"
+              defaultValue={activeRef}
+              options={REF_OPTIONS}
+              basePath="/financeiro"
+            />
           </div>
         </div>
 

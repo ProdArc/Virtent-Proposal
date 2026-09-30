@@ -15,6 +15,7 @@ import {
   getFinancialClient,
   parseDecimalInput,
   setBillingPaid,
+  setClientCanceled,
   setSetupPaid,
   updateBillingMonthlyValue,
   updateBillingPixLink,
@@ -47,6 +48,7 @@ export async function updateClientAction(
   const name = String(formData.get("name") || "").trim();
   const cnpj = String(formData.get("cnpj") || "").trim();
   const email = String(formData.get("email") || "").trim();
+  const segment = String(formData.get("segment") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
@@ -92,6 +94,7 @@ export async function updateClientAction(
       dueDay,
       firstBillingDate,
       commissionPct,
+      segment: segment || null,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao atualizar cliente." };
@@ -110,6 +113,20 @@ export async function deleteClientAction(formData: FormData): Promise<void> {
 
   await deleteFinancialClient(id);
   redirect("/financeiro");
+}
+
+/** Diferente de excluir: mantém o cliente e o histórico, só para a geração de cobrança nova. */
+export async function setClientCanceledAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const id = String(formData.get("id") || "");
+  const canceled = String(formData.get("canceled") || "") === "true";
+  if (!id) throw new Error("Cliente inválido.");
+
+  await setClientCanceled(id, canceled);
+  revalidatePath(`/financeiro/${id}`);
+  revalidatePath("/financeiro");
 }
 
 export async function toggleSetupPaidAction(formData: FormData): Promise<void> {

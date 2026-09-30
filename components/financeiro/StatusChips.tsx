@@ -19,15 +19,18 @@ export function StatusChips({
   active,
   counts,
   search,
+  reference,
 }: {
   active: StatusFilter;
   counts: Record<StatusFilter, number>;
   search: string;
+  reference?: string;
 }) {
   const hrefFor = (filter: StatusFilter) => {
     const params = new URLSearchParams();
     if (filter) params.set("status", filter);
     if (search) params.set("q", search);
+    if (reference) params.set("ref", reference);
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
