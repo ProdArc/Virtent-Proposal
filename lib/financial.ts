@@ -276,6 +276,27 @@ export async function setClientCanceled(id: string, canceled: boolean): Promise<
   }
 }
 
+/** Classifica vários clientes de uma vez — pra quando dá pra agrupar por segmento em lote, em vez de um a um. */
+export async function bulkSetSegment(clientIds: string[], segment: string | null): Promise<void> {
+  if (clientIds.length === 0) return;
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_clients")
+    .update({ segment, updated_at: new Date().toISOString() })
+    .in("id", clientIds);
+
+  if (error) {
+    throw new Error(`Falha ao atualizar segmento em massa: ${error.message}`);
+  }
+}
+
+/** Segmentos já usados, sem repetição e em ordem alfabética — sugestão pro campo de texto livre. */
+export function distinctSegments(clients: { segment: string | null }[]): string[] {
+  return [...new Set(clients.map((c) => c.segment).filter((s): s is string => Boolean(s)))].sort(
+    (a, b) => a.localeCompare(b, "pt-BR")
+  );
+}
+
 export async function deleteFinancialClient(id: string): Promise<void> {
   // O delete em cascata leva as cobranças junto, então os estornos precisam
   // acontecer antes — inclusive os das cobranças filhas.

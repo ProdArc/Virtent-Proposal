@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   calcBillingTotal,
+  distinctSegments,
   ensureCurrentBilling,
   getComprovanteSignedUrl,
   getFinancialClient,
@@ -101,10 +102,7 @@ export default async function FinanceiroClientPage({
 
   let segmentSuggestions: string[] = [];
   try {
-    const allClients = await listFinancialClients();
-    segmentSuggestions = [
-      ...new Set(allClients.map((c) => c.segment).filter((s): s is string => Boolean(s))),
-    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    segmentSuggestions = distinctSegments(await listFinancialClients());
   } catch {
     segmentSuggestions = [];
   }

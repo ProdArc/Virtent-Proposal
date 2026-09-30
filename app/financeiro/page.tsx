@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  distinctSegments,
   listAllBillings,
   listFinancialClients,
   type FinancialBillingRow,
@@ -22,6 +23,8 @@ import { StatusChips } from "@/components/financeiro/StatusChips";
 import { SearchInput } from "@/components/financeiro/SearchInput";
 import { UrgencyGroupHeader } from "@/components/financeiro/UrgencyGroupHeader";
 import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
+import { BulkSelectionProvider } from "@/components/financeiro/BulkSelectionContext";
+import { BulkActionBar } from "@/components/financeiro/BulkActionBar";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -128,6 +131,8 @@ export default async function FinanceiroPage({
       .filter((e) => e.status.group === group)
       .sort((a, b) => a.client.name.localeCompare(b.client.name, "pt-BR")),
   })).filter((g) => g.items.length > 0);
+
+  const segmentSuggestions = distinctSegments(clients);
 
   const hrefFor = (filter: StatusFilter) => {
     const params = new URLSearchParams();
@@ -263,7 +268,11 @@ export default async function FinanceiroPage({
             </Link>
           </div>
         ) : (
-          <>
+          <BulkSelectionProvider>
+            <BulkActionBar
+              visibleIds={visible.map((e) => e.client.id)}
+              segmentSuggestions={segmentSuggestions}
+            />
             {grouped.map(({ group, items }) => (
               <section key={group}>
                 <UrgencyGroupHeader group={group as UrgencyGroup} count={items.length} />
@@ -279,7 +288,7 @@ export default async function FinanceiroPage({
                 </div>
               </section>
             ))}
-          </>
+          </BulkSelectionProvider>
         )}
       </div>
     </main>

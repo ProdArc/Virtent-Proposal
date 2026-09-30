@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listFinancialClients } from "@/lib/financial";
+import { distinctSegments, listFinancialClients } from "@/lib/financial";
 import { NewClientForm } from "./NewClientForm";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +10,7 @@ export default async function NovoClienteFinanceiroPage() {
   // de segmento continua funcionando como texto livre normal.
   let segmentSuggestions: string[] = [];
   try {
-    const clients = await listFinancialClients();
-    segmentSuggestions = [...new Set(clients.map((c) => c.segment).filter((s): s is string => Boolean(s)))].sort(
-      (a, b) => a.localeCompare(b, "pt-BR")
-    );
+    segmentSuggestions = distinctSegments(await listFinancialClients());
   } catch {
     segmentSuggestions = [];
   }

@@ -3,6 +3,7 @@ import type { FinancialBillingRow, FinancialClientRow } from "@/lib/financial";
 import type { ClientStatus, Tone } from "@/lib/financeiro-status";
 import { StatusBadge, MailIcon } from "./StatusBadge";
 import { MonthTimeline, MonthTimelineLegend } from "./MonthTimeline";
+import { ClientCheckbox } from "./ClientCheckbox";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -67,6 +68,7 @@ export function ClientCard({
           aria-hidden="true"
           className={`h-9 w-1 shrink-0 rounded-full ${RAIL_CLASS[status.action.tone]}`}
         />
+        <ClientCheckbox id={client.id} name={client.name} />
         <Chevron />
 
         <span className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-light text-brand text-xs font-bold">
