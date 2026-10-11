@@ -1,5 +1,6 @@
 import type { FinancialBillingRow, FinancialClientRow } from "@/lib/financial";
 import { calcBillingTotal } from "@/lib/financial";
+import { billingKindOf } from "@/lib/billing-methods";
 import {
   daysUntil,
   groupForDays,
@@ -62,6 +63,8 @@ export const STATE_TONE: Record<BillingState, Tone> = {
 /** Uma pendência aberta — mensalidade ou implantação, tratadas igual pro cálculo de urgência. */
 export interface OpenItem {
   kind: "setup" | "monthly";
+  /** Cobrança de origem — pode haver 2 no mesmo vencimento (mensalidade + repasse Meta). */
+  billingId?: string;
   dueDate: string;
   value: number;
   daysUntilDue: number;
@@ -149,10 +152,11 @@ export function clientStatus(
     const days = daysUntil(b.due_date, today);
     openItems.push({
       kind: "monthly",
+      billingId: b.id,
       dueDate: b.due_date,
       value: total_value,
       daysUntilDue: days,
-      label: shortMonth(b.due_date),
+      label: billingKindOf(b) === "meta" ? `${shortMonth(b.due_date)} · Meta` : shortMonth(b.due_date),
     });
     openTotal += total_value;
     if (days < 0) overdueCount += 1;
@@ -178,7 +182,7 @@ export function clientStatus(
   let blockers: string[] = [];
   if (soonest?.kind === "setup") blockers = setupBlockers(client);
   else if (soonest?.kind === "monthly") {
-    const b = billings.find((x) => !x.paid && x.due_date === soonest.dueDate);
+    const b = billings.find((x) => x.id === soonest.billingId);
     blockers = b ? billingBlockers(client, b) : [];
   }
 
@@ -221,7 +225,7 @@ function nextAction(
   const alreadySent =
     soonest.kind === "setup"
       ? client.setup_email_sent_at
-      : (billings.find((x) => !x.paid && x.due_date === soonest.dueDate)?.email_sent_at ?? null);
+      : (billings.find((x) => x.id === soonest.billingId)?.email_sent_at ?? null);
 
   if (!alreadySent) {
     return { tone: days <= URGENT_WINDOW_DAYS ? "overdue" : "pending", label: `Cobrança pronta para enviar · ${when}` };

@@ -1,6 +1,12 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { recordMovement, reverseMovementsFor } from "@/lib/cash";
+import {
+  billingKindOf,
+  hasMonthlyBilling,
+  parsePlainDecimal,
+  type BillingKind,
+} from "@/lib/billing-methods";
 
 export interface FinancialClientRow {
   id: string;
@@ -21,6 +27,11 @@ export interface FinancialClientRow {
   first_billing_date: string;
   segment: string | null;
   canceled_at: string | null;
+  bill_fixed: boolean;
+  bill_commission: boolean;
+  bill_meta: boolean;
+  meta_fee_per_dispatch: number;
+  meta_first_billing_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +43,10 @@ export interface FinancialBillingRow {
   monthly_value: number;
   commission_pct: number;
   revenue_amount: number;
+  kind: BillingKind;
+  meta_dispatches: number;
+  meta_cost: number;
+  meta_fee_per_dispatch: number;
   paid: boolean;
   paid_at: string | null;
   nfe_path: string | null;
@@ -44,18 +59,52 @@ export interface FinancialBillingRow {
 
 export interface BillingTotals {
   commission_value: number;
+  /** Repasse Meta: adicional da Virtent (disparos * valor por disparo). */
+  meta_fee_value: number;
+  /** Repasse Meta: custo da Meta só repassado — entra no caixa, mas não é receita da Virtent. */
+  pass_through_value: number;
+  /** O que é faturamento da Virtent: total sem o custo repassado. */
+  revenue_value: number;
+  /** Valor do boleto. */
   total_value: number;
 }
 
-/** Calcula comissão e total a cobrar de uma cobrança mensal: mensalidade + (% comissão * valor arrecadado). */
+/**
+ * Total a cobrar de uma cobrança:
+ * - mensalidade: mensalidade fixa + (% comissão * valor arrecadado)
+ * - repasse Meta: custo da Meta + (disparos * adicional por disparo)
+ */
 export function calcBillingTotal(billing: {
+  kind?: BillingKind | null;
   monthly_value: number;
   commission_pct: number;
   revenue_amount: number;
+  meta_dispatches?: number | null;
+  meta_cost?: number | null;
+  meta_fee_per_dispatch?: number | null;
 }): BillingTotals {
+  if (billingKindOf(billing) === "meta") {
+    const meta_fee_value = round2(
+      Number(billing.meta_dispatches ?? 0) * Number(billing.meta_fee_per_dispatch ?? 0)
+    );
+    const pass_through_value = round2(Number(billing.meta_cost ?? 0));
+    return {
+      commission_value: 0,
+      meta_fee_value,
+      pass_through_value,
+      revenue_value: meta_fee_value,
+      total_value: round2(pass_through_value + meta_fee_value),
+    };
+  }
   const commission_value = round2((billing.commission_pct / 100) * billing.revenue_amount);
   const total_value = round2(billing.monthly_value + commission_value);
-  return { commission_value, total_value };
+  return {
+    commission_value,
+    meta_fee_value: 0,
+    pass_through_value: 0,
+    revenue_value: total_value,
+    total_value,
+  };
 }
 
 function round2(value: number): number {
@@ -96,6 +145,69 @@ export interface NewFinancialClientInput {
   firstBillingDate: string;
   commissionPct: number;
   segment: string | null;
+  billFixed: boolean;
+  billCommission: boolean;
+  billMeta: boolean;
+  metaFeePerDispatch: number;
+  metaFirstBillingDate: string | null;
+}
+
+export type BillingMethodsInput = Pick<
+  NewFinancialClientInput,
+  | "monthlyValue"
+  | "commissionPct"
+  | "billFixed"
+  | "billCommission"
+  | "billMeta"
+  | "metaFeePerDispatch"
+  | "metaFirstBillingDate"
+>;
+
+/**
+ * Lê os campos de forma de cobrança dos formulários de cadastro e edição
+ * (ver components/financeiro/BillingMethodsFields.tsx). Valor de forma
+ * desmarcada continua salvo — remarcar a forma traz o valor de volta.
+ */
+export function parseBillingMethodsForm(
+  formData: FormData
+): { data: BillingMethodsInput } | { error: string } {
+  const billFixed = formData.get("billFixed") === "on";
+  const billCommission = formData.get("billCommission") === "on";
+  const billMeta = formData.get("billMeta") === "on";
+
+  if (!billFixed && !billCommission && !billMeta) {
+    return { error: "Marque ao menos uma forma de cobrança." };
+  }
+
+  const monthlyValue = parseDecimalInput(String(formData.get("monthlyValue") || "")) ?? 0;
+  const commissionPct = parsePlainDecimal(String(formData.get("commissionPct") || "")) ?? 0;
+  const metaFeePerDispatch = parsePlainDecimal(String(formData.get("metaFeePerDispatch") || "")) ?? 0;
+  const metaFirstRaw = String(formData.get("metaFirstBillingDate") || "").trim();
+
+  if (billFixed && monthlyValue <= 0) {
+    return { error: "Informe o valor da mensalidade fixa." };
+  }
+  if (billCommission && (commissionPct <= 0 || commissionPct > 100)) {
+    return { error: "Informe o % sobre a arrecadação (entre 0 e 100)." };
+  }
+  if (billMeta && metaFeePerDispatch < 0) {
+    return { error: "O adicional por disparo não pode ser negativo." };
+  }
+  if (metaFirstRaw && !/^\d{4}-\d{2}-\d{2}$/.test(metaFirstRaw)) {
+    return { error: "Primeiro vencimento do repasse Meta inválido." };
+  }
+
+  return {
+    data: {
+      monthlyValue,
+      commissionPct,
+      billFixed,
+      billCommission,
+      billMeta,
+      metaFeePerDispatch,
+      metaFirstBillingDate: metaFirstRaw || null,
+    },
+  };
 }
 
 export async function listFinancialClients(): Promise<FinancialClientRow[]> {
@@ -123,7 +235,9 @@ export async function getBillingSummaryByClient(): Promise<Record<string, Client
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("financial_billings")
-    .select("client_id, due_date, monthly_value, commission_pct, revenue_amount")
+    .select(
+      "client_id, due_date, kind, monthly_value, commission_pct, revenue_amount, meta_dispatches, meta_cost, meta_fee_per_dispatch"
+    )
     .eq("paid", false);
 
   if (error) {
@@ -163,7 +277,9 @@ export async function listBillingsForClient(clientId: string): Promise<Financial
     .from("financial_billings")
     .select("*")
     .eq("client_id", clientId)
-    .order("due_date", { ascending: false });
+    .order("due_date", { ascending: false })
+    // "monthly" > "meta": no mesmo ciclo, a mensalidade aparece antes do repasse.
+    .order("kind", { ascending: false });
 
   if (error) {
     throw new Error(`Falha ao listar cobranças do cliente "${clientId}": ${error.message}`);
@@ -217,6 +333,13 @@ export async function createFinancialClient(input: NewFinancialClientInput): Pro
       first_billing_date: input.firstBillingDate,
       commission_pct: input.commissionPct,
       segment: input.segment,
+      bill_fixed: input.billFixed,
+      bill_commission: input.billCommission,
+      bill_meta: input.billMeta,
+      meta_fee_per_dispatch: input.metaFeePerDispatch,
+      // Cliente novo com repasse: sem data própria, começa junto da mensalidade.
+      meta_first_billing_date:
+        input.metaFirstBillingDate ?? (input.billMeta ? input.firstBillingDate : null),
     })
     .select("id")
     .single();
@@ -246,12 +369,53 @@ export async function updateFinancialClient(
       first_billing_date: input.firstBillingDate,
       commission_pct: input.commissionPct,
       segment: input.segment,
+      bill_fixed: input.billFixed,
+      bill_commission: input.billCommission,
+      bill_meta: input.billMeta,
+      meta_fee_per_dispatch: input.metaFeePerDispatch,
+      meta_first_billing_date: input.metaFirstBillingDate,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (error) {
     throw new Error(`Falha ao atualizar cliente financeiro "${id}": ${error.message}`);
+  }
+
+  // Forma de cobrança desligada: some com os ciclos FUTUROS dela que ainda
+  // estão vazios (gerados com antecedência por ensureCurrentBilling) — senão
+  // ficariam como valor a receber fantasma. Ciclo já vencido ou com qualquer
+  // dado do usuário fica: pode ser dívida real.
+  const disabledKinds: BillingKind[] = [];
+  if (!hasMonthlyBilling({ bill_fixed: input.billFixed, bill_commission: input.billCommission })) {
+    disabledKinds.push("monthly");
+  }
+  if (!input.billMeta) disabledKinds.push("meta");
+  if (disabledKinds.length === 0) return;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { data: futureRows, error: selectError } = await supabase
+    .from("financial_billings")
+    .select(
+      "id, paid, revenue_amount, meta_dispatches, meta_cost, nfe_path, comprovante_path, pix_link, email_sent_at"
+    )
+    .eq("client_id", id)
+    .in("kind", disabledKinds)
+    .gt("due_date", todayIso);
+
+  if (selectError) {
+    throw new Error(`Falha ao revisar cobranças futuras: ${selectError.message}`);
+  }
+
+  const idsToDelete = (futureRows ?? []).filter((r) => !hasUserData(r)).map((r) => r.id);
+  if (idsToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("financial_billings")
+      .delete()
+      .in("id", idsToDelete);
+    if (deleteError) {
+      throw new Error(`Falha ao remover cobranças futuras: ${deleteError.message}`);
+    }
   }
 }
 
@@ -390,6 +554,8 @@ const MAX_CYCLES = 36;
 function hasUserData(b: {
   paid: boolean;
   revenue_amount: number;
+  meta_dispatches?: number | null;
+  meta_cost?: number | null;
   nfe_path: string | null;
   comprovante_path: string | null;
   pix_link: string | null;
@@ -398,6 +564,8 @@ function hasUserData(b: {
   return (
     b.paid ||
     Number(b.revenue_amount) > 0 ||
+    Number(b.meta_dispatches ?? 0) > 0 ||
+    Number(b.meta_cost ?? 0) > 0 ||
     Boolean(b.nfe_path) ||
     Boolean(b.comprovante_path) ||
     Boolean(b.pix_link) ||
@@ -425,18 +593,68 @@ function hasUserData(b: {
  * paralelo (prefetch do Next.js, abas duplicadas, F5 rápido) e um
  * "SELECT, se não existe INSERT" ingênuo deixa todas decidirem "não existe"
  * ao mesmo tempo — foi o que gerou milhares de linhas repetidas. A constraint
- * UNIQUE(client_id, due_date) no banco é a trava definitiva (ver
- * supabase/migrations/006), mas esta função não depende dela pra se manter
- * consistente.
+ * UNIQUE(client_id, due_date, kind) no banco é a trava definitiva (ver
+ * supabase/migrations/006 e 011), mas esta função não depende dela pra se
+ * manter consistente.
  *
  * A checagem de "já existe" é por MÊS (due_date.slice(0,7)), não pela data
  * exata — de propósito. Se o dia de vencimento do cliente mudar depois que o
  * ciclo do mês já foi gerado, a data-alvo recalculada cai num dia diferente
  * e deixaria de "casar" com a linha existente, criando uma segunda cobrança
  * pro mesmo mês (foi o que aconteceu quando um cliente teve o valor da
- * mensalidade ajustado). Por mês é o invariante certo: nunca deveria existir
- * mais de uma cobrança pro mesmo ciclo mensal.
+ * mensalidade ajustado). Por mês E tipo é o invariante certo: nunca deveria
+ * existir mais de uma mensalidade, nem mais de um repasse Meta, pro mesmo
+ * ciclo mensal.
+ *
+ * Cada forma de cobrança ligada no cliente é uma série própria (ver
+ * `billingSeries`): a mensalidade (fixo e/ou %) começa em
+ * `first_billing_date`, o repasse Meta em `meta_first_billing_date`.
  */
+interface BillingSeries {
+  kind: BillingKind;
+  firstDueDate: string;
+}
+
+/** Séries de cobrança que o cliente tem hoje, conforme as formas de cobrança marcadas. */
+function billingSeries(client: FinancialClientRow): BillingSeries[] {
+  const series: BillingSeries[] = [];
+  if (hasMonthlyBilling(client)) {
+    series.push({ kind: "monthly", firstDueDate: client.first_billing_date });
+  }
+  if (client.bill_meta) {
+    series.push({
+      kind: "meta",
+      firstDueDate: client.meta_first_billing_date ?? client.first_billing_date,
+    });
+  }
+  return series;
+}
+
+/** Linha nova de cobrança com o snapshot dos valores do cliente no momento da geração. */
+function newBillingRow(client: FinancialClientRow, kind: BillingKind, due_date: string) {
+  if (kind === "meta") {
+    return {
+      client_id: client.id,
+      due_date,
+      kind,
+      monthly_value: 0,
+      commission_pct: 0,
+      revenue_amount: 0,
+      meta_fee_per_dispatch: client.meta_fee_per_dispatch,
+    };
+  }
+  return {
+    client_id: client.id,
+    due_date,
+    kind,
+    monthly_value: client.bill_fixed ? client.monthly_value : 0,
+    commission_pct: client.bill_commission ? client.commission_pct : 0,
+    revenue_amount: 0,
+  };
+}
+
+const cycleKey = (kind: BillingKind, dueDate: string) => `${kind}:${dueDate.slice(0, 7)}`;
+
 export async function ensureCurrentBilling(client: FinancialClientRow): Promise<void> {
   // Cliente cancelado: não gera ciclo novo nenhum, automático ou não — é
   // exatamente o que "cancelar" significa. O histórico e o que já está em
@@ -446,25 +664,29 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
   const supabase = getSupabaseServerClient();
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  // 1. Ciclos que deveriam existir: do primeiro vencimento até o primeiro que
-  //    ainda não venceu (inclusive).
-  const targetDueDates: string[] = [];
-  let cursor = client.first_billing_date;
-  const overshootMonths = monthsBetween(cursor, todayIso) - (MAX_CYCLES - 1);
-  if (overshootMonths > 0) {
-    cursor = cycleDueDatePlusMonths(cursor, overshootMonths, client.due_day);
-  }
-  for (let i = 0; i < MAX_CYCLES; i++) {
-    targetDueDates.push(cursor);
-    if (cursor > todayIso) break;
-    cursor = nextCycleDueDate(cursor, client.due_day);
+  // 1. Ciclos que deveriam existir, por série: do primeiro vencimento até o
+  //    primeiro que ainda não venceu (inclusive).
+  const targets: { kind: BillingKind; dueDate: string }[] = [];
+  for (const { kind, firstDueDate } of billingSeries(client)) {
+    let cursor = firstDueDate;
+    const overshootMonths = monthsBetween(cursor, todayIso) - (MAX_CYCLES - 1);
+    if (overshootMonths > 0) {
+      cursor = cycleDueDatePlusMonths(cursor, overshootMonths, client.due_day);
+    }
+    for (let i = 0; i < MAX_CYCLES; i++) {
+      targets.push({ kind, dueDate: cursor });
+      if (cursor > todayIso) break;
+      cursor = nextCycleDueDate(cursor, client.due_day);
+    }
   }
 
   // 2. O que já existe.
   const { data: existing, error: selectError } = await withRetry(async () =>
     supabase
       .from("financial_billings")
-      .select("id, due_date, paid, revenue_amount, nfe_path, comprovante_path, pix_link, email_sent_at")
+      .select(
+        "id, due_date, kind, paid, revenue_amount, meta_dispatches, meta_cost, nfe_path, comprovante_path, pix_link, email_sent_at"
+      )
       .eq("client_id", client.id)
       .order("created_at", { ascending: true })
   );
@@ -474,21 +696,15 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
   }
 
   const existingRows = existing ?? [];
-  const existingMonths = new Set(existingRows.map((r) => r.due_date.slice(0, 7)));
+  const existingKeys = new Set(existingRows.map((r) => cycleKey(billingKindOf(r), r.due_date)));
 
   // 3. Insere o que falta, tudo de uma vez (uma ida ao banco, não uma por ciclo).
-  const missing = targetDueDates.filter((d) => !existingMonths.has(d.slice(0, 7)));
+  const missing = targets.filter((t) => !existingKeys.has(cycleKey(t.kind, t.dueDate)));
   if (missing.length > 0) {
     const { error: insertError } = await withRetry(async () =>
-      supabase.from("financial_billings").insert(
-        missing.map((due_date) => ({
-          client_id: client.id,
-          due_date,
-          monthly_value: client.monthly_value,
-          commission_pct: client.commission_pct,
-          revenue_amount: 0,
-        }))
-      )
+      supabase
+        .from("financial_billings")
+        .insert(missing.map((t) => newBillingRow(client, t.kind, t.dueDate)))
     );
 
     // 23505 = unique_violation: outra invocação concorrente criou os mesmos
@@ -498,19 +714,19 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
     }
   }
 
-  // 4. Auto-cura: remove duplicatas do mesmo ciclo (mesmo mês, mesmo se a data
-  //    exata difere — ver comentário acima) que tenham escapado, por corrida
-  //    antes da constraint existir, dados legados, ou o due_day do cliente
-  //    ter mudado. Só apaga linhas vazias — nunca uma com baixa, anexo, PIX
-  //    ou e-mail enviado.
-  const byMonth = new Map<string, typeof existingRows>();
+  // 4. Auto-cura: remove duplicatas do mesmo ciclo e tipo (mesmo mês, mesmo
+  //    se a data exata difere — ver comentário acima) que tenham escapado,
+  //    por corrida antes da constraint existir, dados legados, ou o due_day
+  //    do cliente ter mudado. Só apaga linhas vazias — nunca uma com baixa,
+  //    anexo, PIX ou e-mail enviado.
+  const byCycle = new Map<string, typeof existingRows>();
   for (const row of existingRows) {
-    const monthKey = row.due_date.slice(0, 7);
-    byMonth.set(monthKey, [...(byMonth.get(monthKey) ?? []), row]);
+    const key = cycleKey(billingKindOf(row), row.due_date);
+    byCycle.set(key, [...(byCycle.get(key) ?? []), row]);
   }
 
   const idsToDelete: string[] = [];
-  for (const rows of byMonth.values()) {
+  for (const rows of byCycle.values()) {
     if (rows.length < 2) continue;
     // Mantém a que tem dado do usuário; se nenhuma tiver, mantém a mais antiga.
     const keeper = rows.find(hasUserData) ?? rows[0];
@@ -533,7 +749,8 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
  * cria automaticamente — pra quando o usuário quer adiantar (ex: já quer
  * anexar NFe do mês seguinte) ou precisa recriar um ciclo que foi excluído
  * de propósito. O "próximo" é sempre a partir da última cobrança já
- * existente (não da data de hoje), pra nunca pular um mês.
+ * existente (não da data de hoje), pra nunca pular um mês. Gera o próximo
+ * ciclo de cada forma de cobrança ligada (mensalidade e/ou repasse Meta).
  */
 export async function generateNextBilling(clientId: string): Promise<void> {
   const client = await getFinancialClient(clientId);
@@ -549,18 +766,17 @@ export async function generateNextBilling(clientId: string): Promise<void> {
   const nextDueDate =
     existing.length === 0 ? client.first_billing_date : nextCycleDueDate(lastDueDate, client.due_day);
 
-  if (existing.some((b) => b.due_date.slice(0, 7) === nextDueDate.slice(0, 7))) {
-    throw new Error("Esse ciclo já existe.");
-  }
+  const existingKeys = new Set(existing.map((b) => cycleKey(billingKindOf(b), b.due_date)));
+  const rows = billingSeries(client)
+    // Série que ainda nem começou (repasse Meta com 1º vencimento mais pra frente) não é adiantada.
+    .filter((series) => series.firstDueDate.slice(0, 7) <= nextDueDate.slice(0, 7))
+    .filter((series) => !existingKeys.has(cycleKey(series.kind, nextDueDate)))
+    .map((series) => newBillingRow(client, series.kind, nextDueDate));
+
+  if (rows.length === 0) throw new Error("Esse ciclo já existe.");
 
   const supabase = getSupabaseServerClient();
-  const { error } = await supabase.from("financial_billings").insert({
-    client_id: client.id,
-    due_date: nextDueDate,
-    monthly_value: client.monthly_value,
-    commission_pct: client.commission_pct,
-    revenue_amount: 0,
-  });
+  const { error } = await supabase.from("financial_billings").insert(rows);
 
   if (error) {
     if (error.code === "23505") throw new Error("Esse ciclo já existe.");
@@ -577,6 +793,27 @@ export async function updateBillingRevenue(id: string, revenueAmount: number): P
 
   if (error) {
     throw new Error(`Falha ao atualizar valor arrecadado da cobrança "${id}": ${error.message}`);
+  }
+}
+
+/** Lança os números do repasse Meta de um ciclo: contatos disparados e custo cobrado pela Meta. */
+export async function updateBillingMeta(
+  id: string,
+  dispatches: number,
+  metaCost: number
+): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("financial_billings")
+    .update({
+      meta_dispatches: dispatches,
+      meta_cost: metaCost,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Falha ao atualizar repasse Meta da cobrança "${id}": ${error.message}`);
   }
 }
 
@@ -634,11 +871,12 @@ export async function setBillingPaid(id: string, paid: boolean): Promise<void> {
       month: "long",
       year: "numeric",
     });
+    const what = billingKindOf(billing) === "meta" ? "Repasse Meta" : "Mensalidade";
     await recordMovement({
       direction: "in",
       amount: calcBillingTotal(billing).total_value,
       kind: "monthly",
-      description: `Mensalidade ${reference} — ${client?.name ?? "cliente"}`,
+      description: `${what} ${reference} — ${client?.name ?? "cliente"}`,
       counterpart: client?.name ?? null,
       sourceType: "billing",
       sourceId: billing.id,

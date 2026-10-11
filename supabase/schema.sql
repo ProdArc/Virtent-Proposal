@@ -33,6 +33,12 @@ create table financial_clients (
   first_billing_date date not null default current_date, -- vencimento da 1ª mensalidade (pós-pago: normalmente 1 ciclo após o cadastro)
   segment text, -- segmento/categoria do cliente, texto livre
   canceled_at timestamptz, -- cliente cancelado: para de gerar mensalidade nova, mas mantém o histórico (diferente de excluir)
+  -- Formas de cobrança, combináveis (ver migrations/011):
+  bill_fixed boolean not null default true,          -- mensalidade fixa (monthly_value)
+  bill_commission boolean not null default false,    -- % sobre a arrecadação (commission_pct)
+  bill_meta boolean not null default false,          -- repasse do custo da Meta + adicional por disparo
+  meta_fee_per_dispatch numeric(10,4) not null default 0.005,
+  meta_first_billing_date date,                      -- vencimento do 1º repasse Meta
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -45,6 +51,10 @@ create table financial_billings (
   monthly_value numeric(12,2) not null,   -- snapshot do valor no momento da geração
   commission_pct numeric(5,2) not null,   -- snapshot do percentual no momento da geração
   revenue_amount numeric(12,2) not null default 0, -- valor arrecadado informado pelo usuário
+  kind text not null default 'monthly' check (kind in ('monthly', 'meta')), -- mensalidade ou repasse Meta (boletos separados)
+  meta_dispatches integer not null default 0,        -- repasse Meta: contatos disparados no mês
+  meta_cost numeric(12,2) not null default 0,        -- repasse Meta: custo cobrado pela Meta
+  meta_fee_per_dispatch numeric(10,4) not null default 0, -- snapshot do adicional por disparo
   paid boolean not null default false,
   paid_at timestamptz,
   nfe_path text, -- caminho do arquivo da NFe no bucket "nfes" do Supabase Storage
@@ -57,7 +67,7 @@ create table financial_billings (
   -- chamada concorrentemente (2 abas, prefetch do Next.js etc.) e decide se
   -- cria o ciclo com um SELECT antes do INSERT — sem essa constraint, duas
   -- chamadas simultâneas podem ambas decidir "não existe ainda" e duplicar.
-  unique (client_id, due_date)
+  unique (client_id, due_date, kind)
 );
 
 create index financial_billings_client_idx on financial_billings (client_id);

@@ -130,8 +130,12 @@ export default async function DashboardPage({
     id: string;
     name: string;
     setup: number;
+    /** Faturamento recorrente da Virtent: mensalidade + comissão + adicional por disparo. */
     monthly: number;
     commission: number;
+    metaFee: number;
+    /** Custo da Meta só repassado ao cliente — entra no caixa, mas fica fora do faturamento. */
+    passThrough: number;
   }
   const revenueByClient = new Map<string, ClientRevenue>();
   const ensureRow = (id: string): ClientRevenue => {
@@ -143,6 +147,8 @@ export default async function DashboardPage({
       setup: 0,
       monthly: 0,
       commission: 0,
+      metaFee: 0,
+      passThrough: 0,
     };
     revenueByClient.set(id, row);
     return row;
@@ -160,20 +166,25 @@ export default async function DashboardPage({
     if (!inClientFilter(b.client_id)) continue;
     if (activeMonth && monthKey(b.due_date) !== activeMonth) continue;
     if (!matchesStatus(b.paid, b.due_date)) continue;
-    const { total_value, commission_value } = calcBillingTotal(b);
+    const { revenue_value, commission_value, meta_fee_value, pass_through_value } =
+      calcBillingTotal(b);
     const row = ensureRow(b.client_id);
-    row.monthly += total_value;
+    row.monthly += revenue_value;
     row.commission += commission_value;
+    row.metaFee += meta_fee_value;
+    row.passThrough += pass_through_value;
   }
 
   const clientRows = [...revenueByClient.values()]
     .map((r) => ({ ...r, total: r.setup + r.monthly }))
-    .filter((r) => r.total > 0)
+    .filter((r) => r.total > 0 || r.passThrough > 0)
     .sort((a, b) => b.total - a.total);
 
   const setupTotal = clientRows.reduce((s, r) => s + r.setup, 0);
   const monthlyTotal = clientRows.reduce((s, r) => s + r.monthly, 0);
   const commissionTotal = clientRows.reduce((s, r) => s + r.commission, 0);
+  const metaFeeTotal = clientRows.reduce((s, r) => s + r.metaFee, 0);
+  const passThroughTotal = clientRows.reduce((s, r) => s + r.passThrough, 0);
   const grandTotal = setupTotal + monthlyTotal;
 
   // --- Clientes que entraram no mês de referência ---
@@ -200,7 +211,7 @@ export default async function DashboardPage({
   for (const b of billings) {
     if (!inClientFilter(b.client_id)) continue;
     if (!matchesStatus(b.paid, b.due_date)) continue;
-    bucket(monthKey(b.due_date)).monthly += calcBillingTotal(b).total_value;
+    bucket(monthKey(b.due_date)).monthly += calcBillingTotal(b).revenue_value;
   }
   const months = [...byMonth.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -333,6 +344,7 @@ export default async function DashboardPage({
             </p>
             <p className="text-[11px] text-[#A1A1AA]">
               inclui {currency.format(commissionTotal)} de comissão
+              {metaFeeTotal > 0 && <> e {currency.format(metaFeeTotal)} de adicional por disparo</>}
             </p>
           </div>
           <div className="rounded-xl border border-[#065F46]/25 bg-[#F0FAF6] px-4 py-3 shadow-sm">
@@ -340,6 +352,11 @@ export default async function DashboardPage({
             <p className="text-lg font-bold text-[#18181B] tabular-nums">
               {currency.format(grandTotal)}
             </p>
+            {passThroughTotal > 0 && (
+              <p className="text-[11px] text-[#71717A]">
+                + {currency.format(passThroughTotal)} de repasse Meta (fora do faturamento)
+              </p>
+            )}
           </div>
         </div>
 
@@ -527,6 +544,11 @@ export default async function DashboardPage({
                     <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#52525B]">
                       Total
                     </th>
+                    {passThroughTotal > 0 && (
+                      <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#A1A1AA]">
+                        Repasse Meta
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -552,6 +574,11 @@ export default async function DashboardPage({
                       <td className="py-2.5 pl-4 text-right font-semibold text-[#18181B] tabular-nums">
                         {currency.format(r.total)}
                       </td>
+                      {passThroughTotal > 0 && (
+                        <td className="py-2.5 pl-4 text-right text-[#A1A1AA] tabular-nums">
+                          {r.passThrough > 0 ? currency.format(r.passThrough) : "—"}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -569,6 +596,11 @@ export default async function DashboardPage({
                     <td className="py-2.5 pl-4 text-right font-extrabold text-[#18181B] tabular-nums">
                       {currency.format(grandTotal)}
                     </td>
+                    {passThroughTotal > 0 && (
+                      <td className="py-2.5 pl-4 text-right font-semibold text-[#A1A1AA] tabular-nums">
+                        {currency.format(passThroughTotal)}
+                      </td>
+                    )}
                   </tr>
                 </tfoot>
               </table>

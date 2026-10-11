@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
-import { createFinancialClient, parseDecimalInput } from "@/lib/financial";
+import { createFinancialClient, parseBillingMethodsForm, parseDecimalInput } from "@/lib/financial";
 
 export interface NewFinancialClientState {
   error?: string;
@@ -23,23 +23,22 @@ export async function createFinancialClientAction(
   const segment = String(formData.get("segment") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
-  const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
   const dueDayRaw = String(formData.get("dueDay") || "").trim();
   const firstBillingDate = String(formData.get("firstBillingDate") || "").trim();
-  const commissionPctRaw = String(formData.get("commissionPct") || "").trim();
 
-  if (!name || !setupValueRaw || !monthlyValueRaw || !dueDayRaw || !firstBillingDate || !commissionPctRaw) {
+  if (!name || !setupValueRaw || !dueDayRaw || !firstBillingDate) {
     return { error: "Preencha todos os campos obrigatórios." };
   }
 
   const setupValue = parseDecimalInput(setupValueRaw);
-  const monthlyValue = parseDecimalInput(monthlyValueRaw);
-  const commissionPct = parseDecimalInput(commissionPctRaw);
   const dueDay = Number(dueDayRaw);
 
-  if (setupValue === null || monthlyValue === null || commissionPct === null) {
+  if (setupValue === null) {
     return { error: "Valores inválidos. Use números, ex: 2200 ou 2200,00." };
   }
+
+  const methods = parseBillingMethodsForm(formData);
+  if ("error" in methods) return { error: methods.error };
 
   if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 28) {
     return { error: "Dia de vencimento precisa ser um número entre 1 e 28." };
@@ -57,11 +56,10 @@ export async function createFinancialClientAction(
       email: email || null,
       setupValue,
       setupDueDate: setupDueDate || null,
-      monthlyValue,
       dueDay,
       firstBillingDate,
-      commissionPct,
       segment: segment || null,
+      ...methods.data,
     });
     clientId = created.id;
   } catch (err) {

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { createFinancialClientAction, type NewFinancialClientState } from "./actions";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { CnpjInput } from "@/components/ui/CnpjInput";
+import { BillingMethodsFields } from "@/components/financeiro/BillingMethodsFields";
 
 const initialState: NewFinancialClientState = {};
 
@@ -107,16 +108,23 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
           />
         </div>
 
-        <div>
-          <label htmlFor="monthlyValue" className="block text-xs font-semibold text-[#52525B] mb-1.5">
-            Valor de mensalidade
-          </label>
-          <CurrencyInput id="monthlyValue" name="monthlyValue" required />
-        </div>
+        <BillingMethodsFields
+          defaults={{
+            billFixed: true,
+            billCommission: true,
+            billMeta: false,
+            monthlyValue: 0,
+            commissionPct: 5,
+            metaFeePerDispatch: 0.005,
+            metaFirstBillingDate: null,
+          }}
+          metaDateHint="Vazio = junto com a 1ª mensalidade."
+          inputClassName="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+        />
 
         <div>
           <label htmlFor="dueDay" className="block text-xs font-semibold text-[#52525B] mb-1.5">
-            Dia de vencimento da mensalidade
+            Dia de vencimento das cobranças
           </label>
           <select
             id="dueDay"
@@ -155,25 +163,6 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
           </p>
         </div>
 
-        <div>
-          <label htmlFor="commissionPct" className="block text-xs font-semibold text-[#52525B] mb-1.5">
-            Comissão sobre arrecadação
-          </label>
-          <div className="flex items-center rounded-lg border border-[#E4E4E7] bg-white focus-within:ring-2 focus-within:ring-[#065F46]/30 focus-within:border-[#065F46]">
-            <input
-              id="commissionPct"
-              name="commissionPct"
-              type="number"
-              step="0.1"
-              min={0}
-              max={100}
-              required
-              defaultValue={5}
-              className="w-full min-w-0 bg-transparent pl-3 py-2.5 text-sm text-[#18181B] focus:outline-none"
-            />
-            <span className="pr-3 text-sm text-[#A1A1AA] select-none">%</span>
-          </div>
-        </div>
       </div>
 
       {state.error && (

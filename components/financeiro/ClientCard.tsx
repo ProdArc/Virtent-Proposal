@@ -4,8 +4,15 @@ import type { ClientStatus, Tone } from "@/lib/financeiro-status";
 import { StatusBadge, MailIcon } from "./StatusBadge";
 import { MonthTimeline, MonthTimelineLegend } from "./MonthTimeline";
 import { ClientCheckbox } from "./ClientCheckbox";
+import { billingMethodTags, type BillingMethodTag } from "@/lib/billing-methods";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+const METHOD_TAG_CLASS: Record<BillingMethodTag["key"], string> = {
+  fixed: "bg-paid-bg text-paid-ink",
+  commission: "bg-paid-bg text-paid-ink",
+  meta: "bg-[#F5F3FF] text-[#6D28D9]",
+};
 
 const ACTION_CLASS: Record<Tone, string> = {
   paid: "text-paid-ink",
@@ -60,6 +67,7 @@ export function ClientCard({
 }) {
   const initial = client.name.trim().charAt(0).toUpperCase() || "?";
   const today = new Date().toISOString().slice(0, 10);
+  const methodTags = billingMethodTags(client);
 
   return (
     <details className="group border-b border-border last:border-b-0">
@@ -83,6 +91,16 @@ export function ClientCard({
                 Cancelado
               </span>
             )}
+            {/* Forma de cobrança à vista na lista; a descrição completa fica no expandido. */}
+            {methodTags.map((t) => (
+              <span
+                key={t.key}
+                title={t.label}
+                className={`hidden sm:inline-flex shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${METHOD_TAG_CLASS[t.key]}`}
+              >
+                {t.short}
+              </span>
+            ))}
           </span>
           <span className={`block truncate text-[11.5px] font-medium ${ACTION_CLASS[status.action.tone]}`}>
             {status.action.label}
@@ -123,19 +141,20 @@ export function ClientCard({
       {/* Detalhes — só no modo expandido, pra manter o card compacto. */}
       <div className="border-t border-border bg-surface px-4 py-4 sm:pl-[4.5rem]">
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 mb-4">
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
-              Mensalidade
+          <div className="col-span-2">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink mb-1">
+              Forma de cobrança
             </p>
-            <p className="text-sm font-semibold tabular-nums text-ink">
-              {currency.format(client.monthly_value)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
-              Comissão
-            </p>
-            <p className="text-sm font-semibold tabular-nums text-ink">{client.commission_pct}%</p>
+            <div className="flex flex-wrap gap-1.5">
+              {methodTags.map((t) => (
+                <span
+                  key={t.key}
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${METHOD_TAG_CLASS[t.key]}`}
+                >
+                  {t.label}
+                </span>
+              ))}
+            </div>
           </div>
           <div>
             <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">

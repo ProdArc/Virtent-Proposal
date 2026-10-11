@@ -8,6 +8,7 @@ import {
   type FinancialBillingRow,
   type FinancialClientRow,
 } from "@/lib/financial";
+import { billingKindOf, formatFee } from "@/lib/billing-methods";
 
 let resendClient: Resend | null = null;
 
@@ -213,15 +214,31 @@ export function renderSetupEmail(client: FinancialClientRow): EmailPreview {
 /** Prévia da cobrança de mensalidade de um ciclo — enviada no máximo 1 vez por referência (ver `billing.email_sent_at`). */
 export function renderBillingEmail(client: FinancialClientRow, billing: FinancialBillingRow): EmailPreview {
   const name = escapeHtml(client.name);
-  const { total_value, commission_value } = calcBillingTotal(billing);
+  const { total_value, commission_value, meta_fee_value, pass_through_value } =
+    calcBillingTotal(billing);
   const reference = capitalize(monthYearFmt.format(new Date(`${billing.due_date}T00:00:00`)));
-  const subject = `Fatura de mensalidade Virtent — ${reference} — ${client.name}`;
+  const isMeta = billingKindOf(billing) === "meta";
+  const service = isMeta ? "repasse Meta (WhatsApp API oficial)" : "mensalidade";
+  const subject = isMeta
+    ? `Fatura de repasse Meta Virtent — ${reference} — ${client.name}`
+    : `Fatura de mensalidade Virtent — ${reference} — ${client.name}`;
 
-  const rows: [string, string][] = [
-    ["Serviço", "Mensalidade Virtent"],
-    ["Referência", reference],
-    ["Mensalidade", currency.format(billing.monthly_value)],
-  ];
+  const rows: [string, string][] = isMeta
+    ? [
+        ["Serviço", "Repasse Meta — WhatsApp API oficial"],
+        ["Referência", reference],
+        ["Custo Meta", currency.format(pass_through_value)],
+        ["Contatos disparados", new Intl.NumberFormat("pt-BR").format(billing.meta_dispatches)],
+        [
+          `Adicional (${formatFee(billing.meta_fee_per_dispatch)} por disparo)`,
+          currency.format(meta_fee_value),
+        ],
+      ]
+    : [
+        ["Serviço", "Mensalidade Virtent"],
+        ["Referência", reference],
+        ["Mensalidade", currency.format(billing.monthly_value)],
+      ];
   // Só mostra a linha de comissão quando ela existe — senão vira ruído com "R$ 0,00".
   if (commission_value > 0) {
     rows.push([`Comissão (${billing.commission_pct}%)`, currency.format(commission_value)]);
@@ -232,7 +249,7 @@ export function renderBillingEmail(client: FinancialClientRow, billing: Financia
     `
     ${greeting(
       name,
-      `Informamos que a fatura referente à mensalidade Virtent de <strong style="color:#18181B;">${name}</strong>, referente a ${reference}, está disponível.`
+      `Informamos que a fatura referente ${isMeta ? "ao" : "à"} ${service} Virtent de <strong style="color:#18181B;">${name}</strong>, referente a ${reference}, está disponível.`
     )}
     ${amountBlock(
       currency.format(total_value),

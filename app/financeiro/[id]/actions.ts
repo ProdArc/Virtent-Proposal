@@ -13,10 +13,12 @@ import {
   generateNextBilling,
   getBillingById,
   getFinancialClient,
+  parseBillingMethodsForm,
   parseDecimalInput,
   setBillingPaid,
   setClientCanceled,
   setSetupPaid,
+  updateBillingMeta,
   updateBillingMonthlyValue,
   updateBillingPixLink,
   updateBillingRevenue,
@@ -28,6 +30,7 @@ import {
   uploadSetupNfe,
 } from "@/lib/financial";
 import { sendBillingEmail, sendSetupEmail } from "@/lib/email";
+import { parseIntegerInput } from "@/lib/billing-methods";
 
 async function assertAuthorized(): Promise<string | null> {
   return requireSession();
@@ -51,31 +54,22 @@ export async function updateClientAction(
   const segment = String(formData.get("segment") || "").trim();
   const setupValueRaw = String(formData.get("setupValue") || "").trim();
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
-  const monthlyValueRaw = String(formData.get("monthlyValue") || "").trim();
   const dueDayRaw = String(formData.get("dueDay") || "").trim();
   const firstBillingDate = String(formData.get("firstBillingDate") || "").trim();
-  const commissionPctRaw = String(formData.get("commissionPct") || "").trim();
 
-  if (
-    !id ||
-    !name ||
-    !setupValueRaw ||
-    !monthlyValueRaw ||
-    !dueDayRaw ||
-    !firstBillingDate ||
-    !commissionPctRaw
-  ) {
+  if (!id || !name || !setupValueRaw || !dueDayRaw || !firstBillingDate) {
     return { error: "Preencha todos os campos obrigatórios." };
   }
 
   const setupValue = parseDecimalInput(setupValueRaw);
-  const monthlyValue = parseDecimalInput(monthlyValueRaw);
-  const commissionPct = parseDecimalInput(commissionPctRaw);
   const dueDay = Number(dueDayRaw);
 
-  if (setupValue === null || monthlyValue === null || commissionPct === null) {
+  if (setupValue === null) {
     return { error: "Valores inválidos. Use números, ex: 2200 ou 2200,00." };
   }
+
+  const methods = parseBillingMethodsForm(formData);
+  if ("error" in methods) return { error: methods.error };
   if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 28) {
     return { error: "Dia de vencimento precisa ser um número entre 1 e 28." };
   }
@@ -90,17 +84,17 @@ export async function updateClientAction(
       email: email || null,
       setupValue,
       setupDueDate: setupDueDate || null,
-      monthlyValue,
       dueDay,
       firstBillingDate,
-      commissionPct,
       segment: segment || null,
+      ...methods.data,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao atualizar cliente." };
   }
 
   revalidatePath(`/financeiro/${id}`);
+  revalidatePath("/financeiro");
   return {};
 }
 
@@ -152,6 +146,20 @@ export async function updateBillingRevenueAction(formData: FormData): Promise<vo
 
   const revenueAmount = parseDecimalInput(revenueRaw) ?? 0;
   await updateBillingRevenue(billingId, revenueAmount);
+  revalidatePath(`/financeiro/${clientId}`);
+}
+
+export async function updateBillingMetaAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const billingId = String(formData.get("billingId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  if (!billingId || !clientId) throw new Error("Cobrança inválida.");
+
+  const dispatches = parseIntegerInput(String(formData.get("metaDispatches") || "")) ?? 0;
+  const metaCost = parseDecimalInput(String(formData.get("metaCost") || "")) ?? 0;
+  await updateBillingMeta(billingId, dispatches, metaCost);
   revalidatePath(`/financeiro/${clientId}`);
 }
 

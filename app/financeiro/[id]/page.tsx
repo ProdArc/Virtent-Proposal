@@ -13,6 +13,7 @@ import {
   type FinancialBillingRow,
 } from "@/lib/financial";
 import { billingEmailBlockedReason, renderBillingEmail, renderSetupEmail, setupEmailBlockedReason } from "@/lib/email";
+import { billingKindOf, billingMethodTags, formatFee, hasMonthlyBilling } from "@/lib/billing-methods";
 import { EditClientForm } from "./EditClientForm";
 import { ConfirmButton } from "./ConfirmButton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
@@ -32,6 +33,7 @@ import {
   setClientCanceledAction,
   toggleBillingPaidAction,
   toggleSetupPaidAction,
+  updateBillingMetaAction,
   updateBillingMonthlyValueAction,
   updateBillingPixLinkAction,
   updateBillingRevenueAction,
@@ -43,6 +45,7 @@ import {
 } from "./actions";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const intFmt = new Intl.NumberFormat("pt-BR");
 const monthYearFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const dateFmt = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR");
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -143,7 +146,12 @@ export default async function FinanceiroClientPage({
 
   // Ciclo atual e pendências sempre visíveis (e abertas por padrão); ciclos
   // passados já pagos vão pro histórico colapsado.
-  const visibleBillings = billings.filter((b) => !b.paid || isSameCycle(b.due_date, now));
+  // Ciclos futuros (gerados com antecedência) vão pro fim e fechados: no topo
+  // e abertos, eram confundidos com o ciclo do mês e recebiam o valor
+  // arrecadado no lugar errado — e o dashboard do mês ficava sem a comissão.
+  const visibleBillings = billings
+    .filter((b) => !b.paid || isSameCycle(b.due_date, now))
+    .sort((a, b) => Number(isFuture(a, todayIso)) - Number(isFuture(b, todayIso)));
   const historicalBillings = billings.filter((b) => b.paid && !isSameCycle(b.due_date, now));
 
   // Ciclo que o botão "Gerar próxima mensalidade" criaria — além do que
@@ -157,8 +165,14 @@ export default async function FinanceiroClientPage({
     billings.length === 0 ? client.first_billing_date : nextCycleDueDate(lastDueDate, client.due_day);
   const nextCycleAlreadyExists = billings.some((b) => b.due_date.slice(0, 7) === nextCycleDate.slice(0, 7));
 
+  const methodTags = billingMethodTags(client);
+  const hasMetaBillings = billings.some((b) => billingKindOf(b) === "meta");
+
   function billingCard(b: FinancialBillingRow) {
-    const { commission_value, total_value } = calcBillingTotal(b);
+    const { commission_value, meta_fee_value, pass_through_value, total_value } = calcBillingTotal(b);
+    const isMeta = billingKindOf(b) === "meta";
+    // Valor arrecadado só importa pra quem cobra % — em cliente de valor fixo vira ruído.
+    const showRevenue = Number(b.commission_pct) > 0 || Number(b.revenue_amount) > 0;
     const overdue = isOverdue(b, todayIso);
     const future = isFuture(b, todayIso);
     const current = isSameCycle(b.due_date, now);
@@ -176,7 +190,7 @@ export default async function FinanceiroClientPage({
     return (
       <details
         key={b.id}
-        open={!b.paid || current}
+        open={(!b.paid && !future) || current}
         className="group rounded-xl border border-[#E4E4E7] bg-white overflow-hidden open:shadow-sm transition-shadow"
       >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 select-none hover:bg-[#F9FBF8] transition-colors">
@@ -185,6 +199,17 @@ export default async function FinanceiroClientPage({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-[#18181B] truncate">{cycleLabel(b.due_date)}</p>
+                {isMeta ? (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#6D28D9] shrink-0">
+                    Repasse Meta
+                  </span>
+                ) : (
+                  hasMetaBillings && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#52525B] shrink-0">
+                      Mensalidade
+                    </span>
+                  )
+                )}
                 {current && (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#1D4ED8] shrink-0">
                     Ciclo atual
@@ -205,50 +230,109 @@ export default async function FinanceiroClientPage({
         </summary>
 
         <div className="px-4 pb-4">
+          {future && (
+            <p className="mt-1 mb-3 rounded-lg bg-[#FFF7ED] px-3 py-2 text-xs text-[#B45309]">
+              Ciclo futuro ({cycleLabel(b.due_date)}). O que for lançado aqui entra no faturamento
+              de {cycleLabel(b.due_date).toLowerCase()}, não no do mês atual.
+            </p>
+          )}
           <div className="border-t border-[#E4E4E7] pt-4 flex flex-wrap items-end gap-3 mb-4">
-            <form action={updateBillingMonthlyValueAction} className="flex items-end gap-2">
-              <input type="hidden" name="billingId" value={b.id} />
-              <input type="hidden" name="clientId" value={client.id} />
-              <div>
-                <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
-                  Mensalidade deste ciclo
-                </label>
-                <CurrencyInput name="monthlyValue" defaultValue={b.monthly_value} className="w-36" />
-              </div>
-              <SubmitButton
-                pendingLabel="Salvando..."
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
-              >
-                Salvar
-              </SubmitButton>
-            </form>
+            {isMeta ? (
+              <>
+                <form action={updateBillingMetaAction} className="flex flex-wrap items-end gap-2">
+                  <input type="hidden" name="billingId" value={b.id} />
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                      Contatos disparados
+                    </label>
+                    <input
+                      name="metaDispatches"
+                      type="text"
+                      inputMode="numeric"
+                      defaultValue={b.meta_dispatches ? intFmt.format(b.meta_dispatches) : ""}
+                      placeholder="Ex: 100.000"
+                      className="w-36 rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                      Custo Meta no mês
+                    </label>
+                    <CurrencyInput name="metaCost" defaultValue={b.meta_cost} className="w-36" />
+                  </div>
+                  <SubmitButton
+                    pendingLabel="Salvando..."
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  >
+                    Salvar
+                  </SubmitButton>
+                </form>
 
-            <form action={updateBillingRevenueAction} className="flex items-end gap-2">
-              <input type="hidden" name="billingId" value={b.id} />
-              <input type="hidden" name="clientId" value={client.id} />
-              <div>
-                <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
-                  Valor arrecadado
-                </label>
-                <CurrencyInput name="revenueAmount" defaultValue={b.revenue_amount} className="w-36" />
-              </div>
-              <SubmitButton
-                pendingLabel="Salvando..."
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
-              >
-                Salvar
-              </SubmitButton>
-            </form>
+                <div className="text-xs text-[#71717A] ml-auto text-right">
+                  <p>
+                    Custo Meta {currency.format(pass_through_value)} · {intFmt.format(b.meta_dispatches)}{" "}
+                    disparos × {formatFee(b.meta_fee_per_dispatch)} = {currency.format(meta_fee_value)}
+                  </p>
+                  <p className="font-semibold text-[#18181B] tabular-nums">
+                    Total a cobrar: {currency.format(total_value)}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <form action={updateBillingMonthlyValueAction} className="flex items-end gap-2">
+                  <input type="hidden" name="billingId" value={b.id} />
+                  <input type="hidden" name="clientId" value={client.id} />
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                      Mensalidade deste ciclo
+                    </label>
+                    <CurrencyInput name="monthlyValue" defaultValue={b.monthly_value} className="w-36" />
+                  </div>
+                  <SubmitButton
+                    pendingLabel="Salvando..."
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  >
+                    Salvar
+                  </SubmitButton>
+                </form>
 
-            <div className="text-xs text-[#71717A] ml-auto text-right">
-              <p>
-                Mensalidade {currency.format(b.monthly_value)} · comissão {b.commission_pct}% ={" "}
-                {currency.format(commission_value)}
-              </p>
-              <p className="font-semibold text-[#18181B] tabular-nums">
-                Total a cobrar: {currency.format(total_value)}
-              </p>
-            </div>
+                {showRevenue && (
+                  <form action={updateBillingRevenueAction} className="flex items-end gap-2">
+                    <input type="hidden" name="billingId" value={b.id} />
+                    <input type="hidden" name="clientId" value={client.id} />
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                        Valor arrecadado
+                      </label>
+                      <CurrencyInput name="revenueAmount" defaultValue={b.revenue_amount} className="w-36" />
+                    </div>
+                    <SubmitButton
+                      pendingLabel="Salvando..."
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                    >
+                      Salvar
+                    </SubmitButton>
+                  </form>
+                )}
+
+                <div className="text-xs text-[#71717A] ml-auto text-right">
+                  <p>
+                    Mensalidade {currency.format(b.monthly_value)}
+                    {showRevenue && (
+                      <>
+                        {" "}
+                        · comissão {b.commission_pct}% = {currency.format(commission_value)}
+                      </>
+                    )}
+                  </p>
+                  <p className="font-semibold text-[#18181B] tabular-nums">
+                    Total a cobrar: {currency.format(total_value)}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-3 mb-4">
@@ -458,6 +542,16 @@ export default async function FinanceiroClientPage({
                 {client.cnpj && <p className="text-xs text-[#A1A1AA]">CNPJ {client.cnpj}</p>}
                 {client.email && <p className="text-xs text-[#A1A1AA]">{client.email}</p>}
                 {client.segment && <p className="text-xs text-[#A1A1AA]">{client.segment}</p>}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {methodTags.map((t) => (
+                  <span
+                    key={t.key}
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.key === "meta" ? "bg-[#F5F3FF] text-[#6D28D9]" : "bg-[#ECFDF5] text-[#065F46]"}`}
+                  >
+                    {t.label}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -697,11 +791,28 @@ export default async function FinanceiroClientPage({
               </form>
             )}
           </div>
-          <p className="text-xs text-[#A1A1AA] mb-5">
-            Total cobrado por ciclo = mensalidade ({currency.format(client.monthly_value)}) +
-            comissão de {client.commission_pct}% sobre o valor arrecadado informado abaixo. Clique numa
-            referência pra ver ou esconder os detalhes.
-          </p>
+          <div className="text-xs text-[#A1A1AA] mb-5 space-y-0.5">
+            {hasMonthlyBilling(client) && (
+              <p>
+                Mensalidade por ciclo ={" "}
+                {[
+                  client.bill_fixed && `valor fixo (${currency.format(client.monthly_value)})`,
+                  client.bill_commission &&
+                    `${client.commission_pct}% sobre o valor arrecadado informado no ciclo`,
+                ]
+                  .filter(Boolean)
+                  .join(" + ")}
+                .
+              </p>
+            )}
+            {client.bill_meta && (
+              <p>
+                Repasse Meta (boleto separado) = custo da Meta no mês +{" "}
+                {formatFee(client.meta_fee_per_dispatch)} por contato disparado.
+              </p>
+            )}
+            <p>Clique numa referência pra ver ou esconder os detalhes.</p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             <div className="rounded-xl border border-[#E4E4E7] px-4 py-3">

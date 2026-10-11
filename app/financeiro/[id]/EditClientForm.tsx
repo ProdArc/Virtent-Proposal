@@ -5,9 +5,27 @@ import { updateClientAction, type FormActionState } from "./actions";
 import type { FinancialClientRow } from "@/lib/financial";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { CnpjInput } from "@/components/ui/CnpjInput";
+import { BillingMethodsFields } from "@/components/financeiro/BillingMethodsFields";
 
 const initialState: FormActionState = {};
 const DUE_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+/**
+ * Sugestão de 1º repasse Meta pra quem ainda não tem: o próximo vencimento a
+ * partir de hoje. Ligar o repasse num cliente antigo não pode cair no
+ * `first_billing_date`, senão gera repasse vazio pra todos os meses passados.
+ */
+function nextDueDateFromToday(dueDay: number): string {
+  const now = new Date();
+  const day = Math.min(Math.max(dueDay, 1), 28);
+  const thisMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), day));
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const next =
+    thisMonth.getTime() >= todayUtc
+      ? thisMonth
+      : new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, day));
+  return next.toISOString().slice(0, 10);
+}
 
 export function EditClientForm({
   client,
@@ -101,15 +119,27 @@ export function EditClientForm({
             className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
           />
         </div>
+        <BillingMethodsFields
+          defaults={{
+            billFixed: client.bill_fixed,
+            billCommission: client.bill_commission,
+            billMeta: client.bill_meta,
+            monthlyValue: client.monthly_value,
+            commissionPct: client.commission_pct,
+            metaFeePerDispatch: client.meta_fee_per_dispatch,
+            metaFirstBillingDate:
+              client.meta_first_billing_date ?? nextDueDateFromToday(client.due_day),
+          }}
+          metaDateHint={
+            client.meta_first_billing_date
+              ? "Os ciclos de repasse começam nesta data."
+              : "Sugestão: próximo vencimento. Antes dele não é gerado repasse."
+          }
+          inputClassName="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+        />
         <div>
           <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
-            Valor de mensalidade
-          </label>
-          <CurrencyInput name="monthlyValue" required defaultValue={client.monthly_value} />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
-            Dia de vencimento da mensalidade
+            Dia de vencimento das cobranças
           </label>
           <select
             name="dueDay"
@@ -138,24 +168,6 @@ export function EditClientForm({
           <p className="text-[11px] text-[#A1A1AA] mt-1">
             Só afeta o 1º ciclo, antes de qualquer cobrança já gerada.
           </p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
-            Comissão sobre arrecadação
-          </label>
-          <div className="flex items-center rounded-lg border border-[#E4E4E7] bg-white focus-within:ring-2 focus-within:ring-[#065F46]/30 focus-within:border-[#065F46]">
-            <input
-              name="commissionPct"
-              type="number"
-              step="0.1"
-              min={0}
-              max={100}
-              required
-              defaultValue={client.commission_pct}
-              className="w-full min-w-0 bg-transparent pl-3 py-2 text-sm text-[#18181B] focus:outline-none"
-            />
-            <span className="pr-3 text-sm text-[#A1A1AA] select-none">%</span>
-          </div>
         </div>
       </div>
 

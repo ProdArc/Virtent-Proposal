@@ -1,6 +1,7 @@
 import type { FinancialBillingRow } from "@/lib/financial";
 import { calcBillingTotal } from "@/lib/financial";
 import { billingState, STATE_LABEL, type BillingState } from "@/lib/financeiro-status";
+import { BILLING_KIND_LABEL, billingKindOf } from "@/lib/billing-methods";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -19,6 +20,10 @@ const CELL_CLASS: Record<BillingState, string> = {
   future: "bg-white text-neutral-ink border border-neutral-line",
 };
 
+// Mês com mensalidade + repasse Meta vira UM quadrado: vale o estado que
+// mais pede ação entre os dois.
+const STATE_PRIORITY: BillingState[] = ["overdue", "pending", "future", "paid"];
+
 export function MonthTimeline({
   billings,
   today,
@@ -28,10 +33,13 @@ export function MonthTimeline({
   today: string;
   limit?: number;
 }) {
+  const byMonth = new Map<string, FinancialBillingRow[]>();
+  for (const b of billings) {
+    const key = b.due_date.slice(0, 7);
+    byMonth.set(key, [...(byMonth.get(key) ?? []), b]);
+  }
   // Mais recente primeiro, como no resto do painel.
-  const recent = [...billings]
-    .sort((a, b) => b.due_date.localeCompare(a.due_date))
-    .slice(0, limit);
+  const recent = [...byMonth.entries()].sort(([a], [b]) => b.localeCompare(a)).slice(0, limit);
 
   if (recent.length === 0) {
     return <p className="text-xs text-secondary-ink">Nenhuma referência gerada ainda.</p>;
@@ -39,21 +47,29 @@ export function MonthTimeline({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {recent.map((b) => {
-        const state = billingState(b, today);
-        const monthIndex = Number(b.due_date.slice(5, 7)) - 1;
-        const label = monthLongFmt.format(new Date(`${b.due_date}T00:00:00`));
-        const sent = b.email_sent_at
-          ? `e-mail enviado em ${new Date(b.email_sent_at).toLocaleDateString("pt-BR")}`
-          : "e-mail não enviado";
+      {recent.map(([monthKey, rows]) => {
+        const states = rows.map((b) => billingState(b, today));
+        const state = STATE_PRIORITY.find((s) => states.includes(s)) ?? "paid";
+        const monthIndex = Number(monthKey.slice(5, 7)) - 1;
+        const label = monthLongFmt.format(new Date(`${monthKey}-01T00:00:00`));
+        const allSent = rows.every((b) => b.email_sent_at);
+        const details = rows
+          .map((b) => {
+            const sent = b.email_sent_at
+              ? `e-mail enviado em ${new Date(b.email_sent_at).toLocaleDateString("pt-BR")}`
+              : "e-mail não enviado";
+            const kind = rows.length > 1 ? `${BILLING_KIND_LABEL[billingKindOf(b)]}: ` : "";
+            return `${kind}${STATE_LABEL[billingState(b, today)]} · ${currency.format(calcBillingTotal(b).total_value)} · ${sent}`;
+          })
+          .join("\n");
         return (
           <span
-            key={b.id}
-            title={`${label} · ${STATE_LABEL[state]} · ${currency.format(calcBillingTotal(b).total_value)} · ${sent}`}
+            key={monthKey}
+            title={`${label}\n${details}`}
             className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none ${CELL_CLASS[state]}`}
           >
             {MONTH_ABBR[monthIndex]}
-            {b.email_sent_at && (
+            {allSent && (
               <span
                 aria-hidden="true"
                 title=""
