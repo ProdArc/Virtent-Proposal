@@ -19,6 +19,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Virtent — Propostas Comerciais",
   description: "Propostas comerciais personalizadas da Virtent.",
+  // Ícones (app/icon.png, app/apple-icon.png e app/favicon.ico) o Next liga
+  // sozinho pelo nome do arquivo. Aqui fica só o "salvar na tela de início" do
+  // iOS: abre sem a barra do Safari, como app, com o nome curto abaixo do ícone.
+  appleWebApp: {
+    capable: true,
+    title: "Virtent",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
