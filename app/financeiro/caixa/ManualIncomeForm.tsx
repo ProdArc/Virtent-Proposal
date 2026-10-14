@@ -26,7 +26,7 @@ export function ManualIncomeForm() {
   }, [state.ok]);
 
   return (
-    <details className="group rounded-2xl border border-border bg-white shadow-sm">
+    <details className="group rounded-3xl bg-white shadow-card">
       <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-ink hover:bg-surface transition-colors">
         Adicionar entrada manual
         <span className="ml-2 font-normal text-secondary-ink">aporte, devolução, outras receitas...</span>

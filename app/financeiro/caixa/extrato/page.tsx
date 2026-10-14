@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { listMovements, KIND_LABEL, type CashMovementRow, type MovementKind } from "@/lib/cash";
 import { normalizeName } from "@/lib/payables";
-import { LogoutButton } from "@/components/ui/LogoutButton";
-import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
+import { btnSecondary, EmptyState, PageHeader } from "@/components/financeiro/ui";
 import { LedgerFilters } from "./LedgerFilters";
 import { ReverseManualButton } from "./ReverseManualButton";
 
@@ -45,7 +44,7 @@ export default async function ExtratoPage({
 
   if (configError) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-surface px-6">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="max-w-lg text-center">
           <p className="text-xs uppercase tracking-[0.18em] font-semibold text-pending-ink mb-3">
             Configuração pendente
@@ -57,7 +56,7 @@ export default async function ExtratoPage({
           </p>
           <p className="mt-3 text-xs text-secondary-ink">{configError}</p>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -99,34 +98,12 @@ export default async function ExtratoPage({
   for (const [k, v] of Object.entries({ type, kind, q, from, to })) if (v) exportParams.set(k, v);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-surface py-12 sm:py-16 px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(6,95,70,0.06),transparent_55%)]" />
-
-      <div className="relative max-w-4xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <Link
-            href="/financeiro/caixa"
-            className="text-xs text-neutral-ink hover:text-ink transition-colors"
-          >
-            ← Caixa
-          </Link>
-          <LogoutButton />
-        </div>
-
-        <div className="mt-4 mb-5">
-          <p className="text-xs uppercase tracking-[0.18em] font-semibold text-brand mb-3">
-            Virtent
-          </p>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink">Extrato de caixa</h1>
-          <p className="text-sm text-neutral-ink mt-1">
-            Somente leitura. Toda linha nasce de uma baixa ou de um pagamento — para corrigir,
-            ajuste na conta de origem.
-          </p>
-        </div>
-
-        <div className="mb-5">
-          <FinanceTabs active="caixa" />
-        </div>
+    <>
+      <PageHeader
+        back={{ href: "/financeiro/caixa", label: "Voltar para o Caixa" }}
+        title="Extrato"
+        subtitle="Somente leitura. Toda linha nasce de uma baixa ou de um pagamento — para corrigir, ajuste na conta de origem."
+      />
 
         <LedgerFilters current={{ type, kind, q, from, to }} kinds={KINDS} kindLabels={KIND_LABEL} />
 
@@ -147,24 +124,21 @@ export default async function ExtratoPage({
         </div>
 
         {movements.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
-            <p className="text-sm font-semibold text-ink mb-1">Nenhuma movimentação ainda</p>
-            <p className="text-sm text-neutral-ink">
-              O extrato se preenche sozinho conforme você dá baixa em recebíveis e paga contas.
-            </p>
-          </div>
+          <EmptyState
+            title="Nenhuma movimentação ainda"
+            description="O extrato se preenche sozinho conforme você dá baixa em recebíveis e paga contas."
+          />
         ) : visible.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
-            <p className="text-sm font-semibold text-ink mb-1">Nada neste filtro</p>
-            <Link
-              href="/financeiro/caixa/extrato"
-              className="text-sm font-semibold text-brand hover:text-brand-hover transition-colors"
-            >
-              Limpar filtros
-            </Link>
-          </div>
+          <EmptyState
+            title="Nada neste filtro"
+            action={
+              <Link href="/financeiro/caixa/extrato" className={btnSecondary}>
+                Limpar filtros
+              </Link>
+            }
+          />
         ) : (
-          <div className="rounded-2xl border border-border bg-white overflow-hidden shadow-sm">
+          <div className="rounded-3xl bg-white shadow-card overflow-hidden">
             {visible.map((m) => {
               const isIn = m.direction === "in";
               const href = sourceHref(m);
@@ -173,14 +147,14 @@ export default async function ExtratoPage({
               const canReverse = m.kind === "manual" && !reversal && !reversedIds.has(m.id);
 
               const row = (
-                <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
                   <span
                     aria-hidden="true"
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
                       isIn ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
                     }`}
                   >
-                    <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
+                    <svg viewBox="0 0 16 16" fill="none" className="h-5 w-5">
                       <path
                         d={isIn ? "M8 13V3M8 3L4 7M8 3l4 4" : "M8 3v10M8 13l-4-4M8 13l4-4"}
                         stroke="currentColor"
@@ -192,10 +166,10 @@ export default async function ExtratoPage({
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-ink">
+                    <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink">
                       {m.description}
                     </span>
-                    <span className="block truncate text-[11.5px] text-secondary-ink">
+                    <span className="mt-0.5 block text-xs text-secondary-ink">
                       {stamp(m.occurred_at)} · {KIND_LABEL[m.kind]}
                       {reversal && " · estorno"}
                     </span>
@@ -203,7 +177,7 @@ export default async function ExtratoPage({
 
                   <span className="shrink-0 text-right">
                     <span
-                      className={`block text-sm font-bold tabular-nums ${
+                      className={`block text-[15px] font-bold tabular-nums ${
                         isIn ? "text-paid-ink" : "text-overdue-ink"
                       }`}
                     >
@@ -223,19 +197,18 @@ export default async function ExtratoPage({
                 <Link
                   key={m.id}
                   href={href}
-                  className="block border-b border-border last:border-b-0 hover:bg-surface transition-colors"
+                  className="block border-b border-hairline last:border-b-0 hover:bg-surface transition-colors"
                 >
                   {row}
                 </Link>
               ) : (
-                <div key={m.id} className="border-b border-border last:border-b-0">
+                <div key={m.id} className="border-b border-hairline last:border-b-0">
                   {row}
                 </div>
               );
             })}
           </div>
         )}
-      </div>
-    </main>
+    </>
   );
 }

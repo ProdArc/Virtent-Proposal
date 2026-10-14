@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CaretDown } from "@phosphor-icons/react/dist/ssr";
 import type { FinancialBillingRow, FinancialClientRow } from "@/lib/financial";
 import type { ClientStatus, Tone } from "@/lib/financeiro-status";
 import { StatusBadge, MailIcon } from "./StatusBadge";
@@ -22,39 +23,19 @@ const ACTION_CLASS: Record<Tone, string> = {
   neutral: "text-secondary-ink",
 };
 
-/** Faixa vertical na borda esquerda — dá a urgência sem gastar largura. */
-const RAIL_CLASS: Record<Tone, string> = {
-  paid: "bg-paid-ink",
-  pending: "bg-pending-ink",
-  overdue: "bg-overdue-ink",
-  onboarding: "bg-onboarding-ink",
-  neutral: "bg-transparent",
+/** Avatar redondo: a cor da inicial já diz a urgência, sem precisar ler. */
+const AVATAR_CLASS: Record<Tone, string> = {
+  paid: "bg-paid-bg text-paid-ink",
+  pending: "bg-pending-bg text-pending-ink",
+  overdue: "bg-overdue-bg text-overdue-ink",
+  onboarding: "bg-onboarding-bg text-onboarding-ink",
+  neutral: "bg-neutral-bg text-neutral-ink",
 };
 
-function Chevron() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-      className="h-4 w-4 shrink-0 text-subtle transition-transform duration-200 group-open:rotate-90"
-    >
-      <path
-        d="M7 4l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 /**
- * Card do cliente. Compacto por padrão (~64px): inicial, nome, valor em aberto
- * e o badge do que é mais urgente. Expande com <details> nativo — sem
- * JavaScript, o que mantém a lista inteira renderizada no servidor mesmo com
- * dezenas de clientes.
+ * Card do cliente, no formato de linha de extrato: avatar, nome, situação e
+ * valor em aberto. Expande com <details> nativo — sem JavaScript, o que mantém
+ * a lista inteira renderizada no servidor mesmo com dezenas de clientes.
  */
 export function ClientCard({
   client,
@@ -70,59 +51,71 @@ export function ClientCard({
   const methodTags = billingMethodTags(client);
 
   return (
-    <details className="group border-b border-border last:border-b-0">
-      <summary className="flex cursor-pointer list-none items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 transition-colors hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40">
+    <details className="group border-b border-hairline last:border-b-0">
+      <summary className="flex min-h-[3.75rem] cursor-pointer list-none items-start gap-3 px-4 py-3 transition-colors sm:items-center hover:bg-[#F8FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-5">
+        <ClientCheckbox id={client.id} name={client.name} />
+
         <span
           aria-hidden="true"
-          className={`h-9 w-1 shrink-0 rounded-full ${RAIL_CLASS[status.action.tone]}`}
-        />
-        <ClientCheckbox id={client.id} name={client.name} />
-        <Chevron />
-
-        <span className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-light text-brand text-xs font-bold">
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold ${AVATAR_CLASS[status.action.tone]}`}
+        >
           {initial}
         </span>
 
+        {/* Nome e valor na 1ª linha, situação na 2ª ocupando a largura toda. O
+            nome quebra em 2 linhas em vez de cortar: os clientes começam todos
+            com "Cartão de TODOS - ", e a cidade, que os distingue, ficava no fim. */}
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span className="block truncate text-sm font-semibold text-ink">{client.name}</span>
-            {client.canceled_at && (
-              <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-neutral-bg text-secondary-ink">
-                Cancelado
+          <span className="flex items-start justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="line-clamp-2 min-w-0 break-words text-[15px] font-semibold leading-snug text-ink sm:line-clamp-1 sm:break-normal">
+                {client.name}
               </span>
-            )}
-            {/* Forma de cobrança à vista na lista; a descrição completa fica no expandido. */}
-            {methodTags.map((t) => (
+              {client.canceled_at && (
+                <span className="shrink-0 rounded-full bg-neutral-bg px-1.5 py-0.5 text-[10px] font-semibold text-secondary-ink">
+                  Cancelado
+                </span>
+              )}
+              {/* Forma de cobrança à vista na lista; a descrição completa fica no expandido. */}
+              {methodTags.map((t) => (
+                <span
+                  key={t.key}
+                  title={t.label}
+                  className={`hidden shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold sm:inline-flex ${METHOD_TAG_CLASS[t.key]}`}
+                >
+                  {t.short}
+                </span>
+              ))}
+            </span>
+            <span className="shrink-0 text-right">
               <span
-                key={t.key}
-                title={t.label}
-                className={`hidden sm:inline-flex shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${METHOD_TAG_CLASS[t.key]}`}
+                title={
+                  status.openItems.length > 0
+                    ? `${status.openItems.length} cobrança${status.openItems.length === 1 ? "" : "s"} em aberto`
+                    : "nada em aberto"
+                }
+                className={`block text-[15px] font-bold tabular-nums ${status.openTotal > 0 ? "text-ink" : "text-subtle"}`}
               >
-                {t.short}
+                {status.openTotal > 0 ? currency.format(status.openTotal) : "—"}
               </span>
-            ))}
+            </span>
           </span>
-          <span className={`block truncate text-[11.5px] font-medium ${ACTION_CLASS[status.action.tone]}`}>
+          <span
+            className={`mt-0.5 line-clamp-2 text-[12.5px] font-medium leading-snug sm:line-clamp-1 ${ACTION_CLASS[status.action.tone]}`}
+          >
             {status.action.label}
           </span>
         </span>
 
-        <span className="shrink-0 text-right">
-          <span className="block text-sm font-bold tabular-nums text-ink">
-            {status.openTotal > 0 ? currency.format(status.openTotal) : "—"}
-          </span>
-          {/* Contagem some no mobile pra devolver largura ao nome do cliente. */}
-          <span className="hidden sm:block text-[10.5px] text-secondary-ink">
-            {status.openItems.length > 0
-              ? `${status.openItems.length} em aberto`
-              : "nada em aberto"}
-          </span>
+        {/* Últimos 6 meses na própria linha: cada quadradinho leva à referência. */}
+        <span className="hidden shrink-0 lg:block">
+          <MonthTimeline billings={billings} today={today} limit={6} order="asc" clientId={client.id} />
         </span>
 
         {/* O responsivo fica no wrapper, não no badge: `hidden` e `inline-flex`
             são ambos utilitários de display e quem vence depende da ordem no
             CSS gerado, não da ordem no atributo — no badge, o `hidden` perdia. */}
-        <span className="hidden md:inline-flex shrink-0">
+        <span className="hidden shrink-0 xl:inline-flex">
           <StatusBadge
             tone={status.setupTone}
             size="sm"
@@ -136,20 +129,25 @@ export function ClientCard({
             {client.setup_paid ? "Implantação ok" : "Implantação"}
           </StatusBadge>
         </span>
+
+        <CaretDown
+          size={16}
+          weight="bold"
+          aria-hidden="true"
+          className="hidden shrink-0 text-subtle transition-transform duration-200 group-open:rotate-180 sm:block"
+        />
       </summary>
 
       {/* Detalhes — só no modo expandido, pra manter o card compacto. */}
-      <div className="border-t border-border bg-surface px-4 py-4 sm:pl-[4.5rem]">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 mb-4">
+      <div className="border-t border-hairline bg-[#F8FAF7] px-4 py-5 sm:px-5">
+        <div className="mb-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           <div className="col-span-2">
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink mb-1">
-              Forma de cobrança
-            </p>
+            <p className="mb-1.5 text-xs font-medium text-secondary-ink">Forma de cobrança</p>
             <div className="flex flex-wrap gap-1.5">
               {methodTags.map((t) => (
                 <span
                   key={t.key}
-                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${METHOD_TAG_CLASS[t.key]}`}
+                  className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${METHOD_TAG_CLASS[t.key]}`}
                 >
                   {t.label}
                 </span>
@@ -157,36 +155,28 @@ export function ClientCard({
             </div>
           </div>
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
-              Já recebido
-            </p>
-            <p className="text-sm font-semibold tabular-nums text-ink">
+            <p className="text-xs font-medium text-secondary-ink">Já recebido</p>
+            <p className="mt-0.5 text-[15px] font-bold tabular-nums text-ink">
               {currency.format(status.receivedTotal)}
             </p>
           </div>
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
-              Implantação
-            </p>
-            <p className="text-sm font-semibold tabular-nums text-ink">
+            <p className="text-xs font-medium text-secondary-ink">Implantação</p>
+            <p className="mt-0.5 text-[15px] font-bold tabular-nums text-ink">
               {currency.format(client.setup_value)}
             </p>
           </div>
           {client.segment && (
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
-                Segmento
-              </p>
-              <p className="text-sm font-semibold text-ink">{client.segment}</p>
+              <p className="text-xs font-medium text-secondary-ink">Segmento</p>
+              <p className="mt-0.5 text-[15px] font-bold text-ink">{client.segment}</p>
             </div>
           )}
         </div>
 
         {status.blockers.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink mb-1.5">
-              Pendências administrativas
-            </p>
+          <div className="mb-5">
+            <p className="mb-1.5 text-xs font-medium text-secondary-ink">Pendências administrativas</p>
             <div className="flex flex-wrap gap-1.5">
               {status.blockers.map((b) => (
                 <StatusBadge key={b} tone="neutral" size="sm">
@@ -197,26 +187,24 @@ export function ClientCard({
           </div>
         )}
 
-        <div className="mb-4">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink mb-1.5">
+        <div className="mb-5">
+          <p className="mb-2 text-xs font-medium text-secondary-ink">
             Histórico por referência{" "}
-            <span className="font-normal normal-case tracking-normal">
-              (mais recente primeiro)
-            </span>
+            <span className="font-normal text-subtle">(mais recente primeiro)</span>
           </p>
           <MonthTimeline billings={billings} today={today} />
           {/* Legenda junto da timeline: fora daqui ela ficaria explicando algo
               que só aparece com o card expandido. */}
-          <div className="mt-2.5">
+          <div className="mt-3">
             <MonthTimelineLegend />
           </div>
         </div>
 
         <Link
           href={`/financeiro/${client.id}`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-brand transition-colors hover:text-brand-hover"
+          className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
         >
-          Abrir cliente →
+          Abrir cliente
         </Link>
       </div>
     </details>

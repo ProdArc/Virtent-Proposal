@@ -9,7 +9,7 @@ function ConfirmSendButton() {
     <button
       type="submit"
       disabled={pending}
-      className="text-sm font-semibold px-4 py-2 rounded-lg bg-[#065F46] text-white hover:bg-[#047857] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+      className="text-sm font-semibold px-4 py-2 rounded-full bg-[#065F46] text-white hover:bg-[#047857] disabled:opacity-60 disabled:cursor-not-allowed transition-colors min-h-10"
     >
       {pending ? "Enviando..." : "Confirmar envio"}
     </button>
@@ -69,7 +69,7 @@ export function SendEmailButton({
           className={
             sentAt
               ? "text-xs font-semibold text-[#065F46] hover:underline"
-              : "text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+              : "text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
           }
         >
           {sentAt ? "Reenviar" : triggerLabel}
@@ -93,7 +93,7 @@ export function SendEmailButton({
             </p>
             <p className="text-sm font-semibold text-[#18181B] mb-3">{subject}</p>
             <div
-              className="rounded-xl border border-[#E4E4E7] overflow-hidden mb-5"
+              className="rounded-2xl border border-hairline overflow-hidden mb-5"
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
             <form action={action} className="flex items-center gap-3">

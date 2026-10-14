@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageHeader } from "@/components/financeiro/ui";
 import { notFound } from "next/navigation";
 import {
   getPayable,
@@ -57,33 +57,23 @@ export default async function PayableDetailPage({
   const remaining = remainingAmount(payable);
 
   return (
-    <main className="min-h-screen bg-surface py-12 sm:py-16 px-6">
-      <div className="max-w-2xl mx-auto">
-        <Link
-          href="/financeiro/pagar"
-          className="text-xs text-neutral-ink hover:text-ink transition-colors"
-        >
-          ← Contas a pagar
-        </Link>
-
-        <div className="mt-4 mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.18em] font-semibold text-brand mb-2">
-              Virtent
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-ink truncate">
-              {supplier?.name ?? "Fornecedor removido"}
-            </h1>
-            <p className="text-sm text-neutral-ink">{payable.title}</p>
-          </div>
-          <StatusBadge tone={PAYABLE_STATE_TONE[state]}>{PAYABLE_STATE_LABEL[state]}</StatusBadge>
-        </div>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader
+        back={{ href: "/financeiro/pagar", label: "Voltar para A pagar" }}
+        title={supplier?.name ?? "Fornecedor removido"}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{payable.title}</span>
+            <StatusBadge tone={PAYABLE_STATE_TONE[state]}>{PAYABLE_STATE_LABEL[state]}</StatusBadge>
+          </span>
+        }
+      />
 
         {/* Resumo financeiro */}
-        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm mb-5">
+        <section className="rounded-3xl bg-white shadow-card p-6 mb-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+              <p className="text-xs font-medium text-secondary-ink">
                 Valor
               </p>
               <p className="text-lg font-bold tabular-nums text-ink">
@@ -91,7 +81,7 @@ export default async function PayableDetailPage({
               </p>
             </div>
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+              <p className="text-xs font-medium text-secondary-ink">
                 Já pago
               </p>
               <p className="text-lg font-bold tabular-nums text-ink">
@@ -99,13 +89,13 @@ export default async function PayableDetailPage({
               </p>
             </div>
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+              <p className="text-xs font-medium text-secondary-ink">
                 Restante
               </p>
               <p className="text-lg font-bold tabular-nums text-ink">{currency.format(remaining)}</p>
             </div>
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+              <p className="text-xs font-medium text-secondary-ink">
                 Vencimento
               </p>
               <p className="text-lg font-bold tabular-nums text-ink">{dateFmt(payable.due_date)}</p>
@@ -115,7 +105,7 @@ export default async function PayableDetailPage({
 
           {payable.status === "pending" && (
             <div className="border-t border-border pt-4">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink mb-2">
+              <p className="text-xs font-medium text-secondary-ink mb-2">
                 Registrar pagamento
               </p>
               <form action={partialPayAction} className="flex flex-wrap items-end gap-2">
@@ -128,7 +118,7 @@ export default async function PayableDetailPage({
                 </div>
                 <SubmitButton
                   pendingLabel="Registrando..."
-                  className="rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-hover"
+                  className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-hover min-h-10"
                 >
                   Registrar
                 </SubmitButton>
@@ -145,7 +135,7 @@ export default async function PayableDetailPage({
                 <input type="hidden" name="id" value={payable.id} />
                 <SubmitButton
                   pendingLabel="Reabrindo..."
-                  className="rounded-lg border border-border bg-white px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface"
+                  className="rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
                 >
                   Reabrir conta
                 </SubmitButton>
@@ -162,8 +152,8 @@ export default async function PayableDetailPage({
         </section>
 
         {/* Comprovante */}
-        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm mb-5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink mb-3">
+        <section className="rounded-3xl bg-white shadow-card p-6 mb-5">
+          <p className="text-xs font-medium text-secondary-ink mb-3">
             Comprovante / nota fiscal
           </p>
           {payable.attachment_path ? (
@@ -199,11 +189,11 @@ export default async function PayableDetailPage({
                 name="file"
                 accept=".pdf,.xml,.jpg,.jpeg,.png"
                 required
-                className="text-xs text-neutral-ink file:mr-2 file:rounded-lg file:border file:border-border file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-ink hover:file:bg-surface file:cursor-pointer"
+                className="text-xs text-neutral-ink file:mr-2 file:rounded-full file:border file:border-border file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
               />
               <SubmitButton
                 pendingLabel="Enviando..."
-                className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-surface"
+                className="rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
               >
                 Enviar
               </SubmitButton>
@@ -225,7 +215,7 @@ export default async function PayableDetailPage({
             <input type="hidden" name="id" value={payable.id} />
             <SubmitButton
               pendingLabel="Duplicando..."
-              className="rounded-lg border border-border bg-white px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface"
+              className="rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
             >
               Duplicar conta
             </SubmitButton>
@@ -253,7 +243,6 @@ export default async function PayableDetailPage({
             </ConfirmButton>
           </form>
         </div>
-      </div>
-    </main>
+    </div>
   );
 }

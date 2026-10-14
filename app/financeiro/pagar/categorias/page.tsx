@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/financeiro/ui";
 import { listCategories, listPayables, type CategoryRow, type PayableRow } from "@/lib/payables";
 import { CategoryTag } from "@/components/financeiro/CategoryTag";
 import { CategoryForm, MergeCategoryForm } from "./CategoryForm";
@@ -31,22 +32,12 @@ export default async function CategoriasPage() {
   const archived = categories.filter((c) => c.archived);
 
   return (
-    <main className="min-h-screen bg-surface py-12 sm:py-16 px-6">
-      <div className="max-w-3xl mx-auto">
-        <Link
-          href="/financeiro/pagar"
-          className="text-xs text-neutral-ink hover:text-ink transition-colors"
-        >
-          ← Contas a pagar
-        </Link>
-        <p className="text-xs uppercase tracking-[0.18em] font-semibold text-brand mt-4 mb-3">
-          Virtent
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink mb-1">Categorias</h1>
-        <p className="text-sm text-neutral-ink mb-8">
-          A cor identifica a categoria nos cards e gráficos. Categorias em uso não são excluídas —
-          são arquivadas ou mescladas, pra não quebrar o histórico.
-        </p>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        back={{ href: "/financeiro/pagar", label: "Voltar para A pagar" }}
+        title="Categorias"
+        subtitle="A cor identifica a categoria nos cards e gráficos. Categorias em uso não são excluídas — são arquivadas ou mescladas, pra não quebrar o histórico."
+      />
 
         {loadError && (
           <p className="mb-6 rounded-lg border border-pending-line bg-pending-bg px-3 py-2 text-sm text-pending-ink">
@@ -59,16 +50,16 @@ export default async function CategoriasPage() {
         </div>
 
         {active.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center">
             <p className="text-sm font-semibold text-ink mb-1">Nenhuma categoria ativa</p>
             <p className="text-sm text-neutral-ink">Cadastre a primeira acima.</p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-white overflow-hidden shadow-sm mb-6">
+          <div className="rounded-3xl bg-white shadow-card overflow-hidden mb-6">
             {active.map((c) => {
               const u = usage.get(c.id) ?? { count: 0, total: 0 };
               return (
-                <details key={c.id} className="group border-b border-border last:border-b-0">
+                <details key={c.id} className="group border-b border-hairline last:border-b-0">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-surface transition-colors">
                     <span className="flex min-w-0 items-center gap-2.5">
                       <span
@@ -87,7 +78,7 @@ export default async function CategoriasPage() {
                       </span>
                     </span>
                   </summary>
-                  <div className="border-t border-border bg-surface px-4 py-4">
+                  <div className="border-t border-hairline bg-surface px-4 py-4">
                     <CategoryForm category={c} />
                     <div className="mt-4 flex flex-wrap items-center gap-4">
                       <Link
@@ -108,7 +99,7 @@ export default async function CategoriasPage() {
                       </form>
                     </div>
                     {u.count > 0 && (
-                      <div className="mt-4 border-t border-border pt-4">
+                      <div className="mt-4 border-t border-hairline pt-4">
                         <MergeCategoryForm
                           from={c}
                           options={active.filter((o) => o.id !== c.id).map((o) => ({ id: o.id, name: o.name }))}
@@ -127,13 +118,13 @@ export default async function CategoriasPage() {
             <summary className="cursor-pointer list-none text-xs font-semibold text-brand hover:text-brand-hover transition-colors">
               Arquivadas ({archived.length})
             </summary>
-            <div className="mt-3 rounded-2xl border border-border bg-white overflow-hidden">
+            <div className="mt-3 rounded-3xl bg-white shadow-card overflow-hidden">
               {archived.map((c) => {
                 const u = usage.get(c.id) ?? { count: 0, total: 0 };
                 return (
                   <div
                     key={c.id}
-                    className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0"
+                    className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3 last:border-b-0"
                   >
                     <CategoryTag name={c.name} color={c.color} archived />
                     <div className="flex items-center gap-4">
@@ -157,7 +148,6 @@ export default async function CategoriasPage() {
             </div>
           </details>
         )}
-      </div>
-    </main>
+    </div>
   );
 }

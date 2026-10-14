@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CaretDown } from "@phosphor-icons/react/dist/ssr";
 import type { CategoryRow, PayableRow, SupplierRow } from "@/lib/payables";
 import {
   dueLabel,
@@ -19,12 +20,13 @@ const dateFmt = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(
 const stampFmt = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
-const RAIL_CLASS: Record<Tone, string> = {
-  paid: "bg-paid-ink",
-  pending: "bg-pending-ink",
-  overdue: "bg-overdue-ink",
-  onboarding: "bg-onboarding-ink",
-  neutral: "bg-neutral-line",
+/** Avatar redondo: a cor da inicial já diz a urgência, sem precisar ler. */
+const AVATAR_CLASS: Record<Tone, string> = {
+  paid: "bg-paid-bg text-paid-ink",
+  pending: "bg-pending-bg text-pending-ink",
+  overdue: "bg-overdue-bg text-overdue-ink",
+  onboarding: "bg-onboarding-bg text-onboarding-ink",
+  neutral: "bg-neutral-bg text-neutral-ink",
 };
 
 const DUE_CLASS: Record<Tone, string> = {
@@ -34,25 +36,6 @@ const DUE_CLASS: Record<Tone, string> = {
   onboarding: "text-onboarding-ink",
   neutral: "text-secondary-ink",
 };
-
-function Chevron() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-      className="h-4 w-4 shrink-0 text-subtle transition-transform duration-200 group-open:rotate-90"
-    >
-      <path
-        d="M7 4l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /** Card da conta a pagar — compacto por padrão, mesmo padrão do ClientCard. */
 export function PayableCard({
@@ -75,39 +58,40 @@ export function PayableCard({
   const partial = Number(payable.paid_amount) > 0 && payable.status !== "paid";
 
   return (
-    <details className="group border-b border-border last:border-b-0">
-      <summary className="flex cursor-pointer list-none items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 transition-colors hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40">
-        <span aria-hidden="true" className={`h-9 w-1 shrink-0 rounded-full ${RAIL_CLASS[tone]}`} />
-        <Chevron />
+    <details className="group border-b border-hairline last:border-b-0">
+      <summary className="flex min-h-[4.5rem] cursor-pointer list-none items-start gap-3 px-4 py-3.5 transition-colors hover:bg-[#F8FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-5">
+        <span
+          aria-hidden="true"
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${AVATAR_CLASS[tone]}`}
+        >
+          {(supplier?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+        </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-ink">
-            {supplier?.name ?? "Fornecedor removido"}
+          <span className="flex items-start justify-between gap-3">
+            <span className="line-clamp-2 min-w-0 break-words text-[15px] font-semibold leading-snug text-ink">
+              {supplier?.name ?? "Fornecedor removido"}
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="block text-[15px] font-bold tabular-nums text-ink">
+                {currency.format(remaining > 0 ? remaining : Number(payable.amount))}
+              </span>
+              <span className="hidden text-[11px] text-secondary-ink sm:block">
+                {partial ? `de ${currency.format(Number(payable.amount))}` : dateFmt(payable.due_date)}
+              </span>
+            </span>
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className={`truncate text-[11.5px] font-medium ${DUE_CLASS[tone]}`}>
-              {dueLabel(payable, today)}
-            </span>
-            <span className="hidden sm:inline truncate text-[11.5px] text-secondary-ink">
-              · {payable.title}
-            </span>
+          <span className={`mt-1 line-clamp-2 text-[12.5px] font-medium leading-snug ${DUE_CLASS[tone]}`}>
+            {dueLabel(payable, today)}
+            <span className="font-normal text-secondary-ink"> · {payable.title}</span>
           </span>
         </span>
 
-        <span className="hidden lg:block shrink-0">
+        <span className="hidden shrink-0 lg:block">
           {category && <CategoryTag name={category.name} color={category.color} archived={category.archived} />}
         </span>
 
-        <span className="shrink-0 text-right">
-          <span className="block text-sm font-bold tabular-nums text-ink">
-            {currency.format(remaining > 0 ? remaining : Number(payable.amount))}
-          </span>
-          <span className="hidden sm:block text-[10.5px] text-secondary-ink">
-            {partial ? `de ${currency.format(Number(payable.amount))}` : dateFmt(payable.due_date)}
-          </span>
-        </span>
-
-        <span className="hidden md:inline-flex shrink-0">
+        <span className="hidden shrink-0 md:inline-flex">
           <StatusBadge tone={tone} size="sm">
             {PAYABLE_STATE_LABEL[state]}
           </StatusBadge>
@@ -121,12 +105,19 @@ export function PayableCard({
             title={`Marcar como paga (${currency.format(remaining)})`}
           />
         )}
+
+        <CaretDown
+          size={16}
+          weight="bold"
+          aria-hidden="true"
+          className="mt-3 hidden shrink-0 text-subtle transition-transform duration-200 group-open:rotate-180 sm:block"
+        />
       </summary>
 
-      <div className="border-t border-border bg-surface px-4 py-4 sm:pl-[3.5rem]">
+      <div className="border-t border-hairline bg-[#F8FAF7] px-4 py-5 sm:px-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 mb-4">
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+            <p className="text-xs font-medium text-secondary-ink">
               Valor total
             </p>
             <p className="text-sm font-semibold tabular-nums text-ink">
@@ -134,7 +125,7 @@ export function PayableCard({
             </p>
           </div>
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+            <p className="text-xs font-medium text-secondary-ink">
               Já pago
             </p>
             <p className="text-sm font-semibold tabular-nums text-ink">
@@ -142,7 +133,7 @@ export function PayableCard({
             </p>
           </div>
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+            <p className="text-xs font-medium text-secondary-ink">
               Restante
             </p>
             <p className="text-sm font-semibold tabular-nums text-ink">
@@ -150,7 +141,7 @@ export function PayableCard({
             </p>
           </div>
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
+            <p className="text-xs font-medium text-secondary-ink">
               Vencimento
             </p>
             <p className="text-sm font-semibold tabular-nums text-ink">
@@ -196,7 +187,7 @@ export function PayableCard({
         </div>
 
         {payable.notes && (
-          <p className="mb-4 whitespace-pre-line rounded-lg border border-border bg-white px-3 py-2 text-xs leading-relaxed text-neutral-ink">
+          <p className="mb-4 whitespace-pre-line rounded-2xl bg-white px-4 py-3 text-xs leading-relaxed text-neutral-ink">
             {payable.notes}
           </p>
         )}
@@ -204,9 +195,9 @@ export function PayableCard({
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href={`/financeiro/pagar/${payable.id}`}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-brand transition-colors hover:text-brand-hover"
+            className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
           >
-            Abrir conta →
+            Abrir conta
           </Link>
           {payable.status_changed_at && (
             <span className="text-[11px] text-secondary-ink">

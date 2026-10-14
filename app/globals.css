@@ -51,6 +51,14 @@
      sobre branco e reprova em AA; este é o tom mais claro que passa. */
   --color-secondary-ink: #71717A;
 
+  /* ── Painel financeiro (visual de banco digital, tema claro) ──────
+     Fundo cinza-esverdeado + cartões brancos flutuando em cima: a
+     separação vem da sombra suave, não de borda. */
+  --color-canvas: #F0F3EF;
+  --color-hairline: rgba(24, 24, 27, 0.07);
+  --shadow-card: 0 1px 2px rgba(16, 24, 20, 0.04), 0 10px 28px -14px rgba(16, 24, 20, 0.14);
+  --shadow-float: 0 8px 30px -8px rgba(16, 24, 20, 0.22), 0 2px 6px rgba(16, 24, 20, 0.06);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -267,3 +275,53 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Painel financeiro: ergonomia de toque ──────────────────────────
+   Escopado em .fin-app (layout de /financeiro) pra não mexer no site
+   público das propostas. Os campos têm texto pequeno espalhado em
+   dezenas de formulários; centralizar aqui evita refazer um a um.
+   - 16px no celular: abaixo disso o iOS dá zoom ao focar o campo.
+   - 44px de altura: alvo de toque mínimo recomendado.                */
+.fin-app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.fin-app select,
+.fin-app textarea {
+  min-height: 2.75rem;
+  border-radius: 0.875rem;
+}
+
+@media (max-width: 639px) {
+  .fin-app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .fin-app select,
+  .fin-app textarea {
+    font-size: 16px;
+  }
+}
+
+.fin-app input[type="checkbox"],
+.fin-app input[type="radio"] {
+  accent-color: #065F46;
+}
+
+/* Evita o "pulo" do toque duplo e o flash cinza do iOS nos botões. */
+.fin-app a,
+.fin-app button,
+.fin-app summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* <details>/<summary>: tira o triângulo nativo (os cards têm o próprio ícone). */
+.fin-app summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Faixa rolável horizontal sem barra visível (chips de filtro). */
+.fin-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.fin-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+/* ────────────────────────────────────────────────────────────── */

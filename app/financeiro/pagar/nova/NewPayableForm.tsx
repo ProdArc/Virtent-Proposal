@@ -31,7 +31,7 @@ export function NewPayableForm({
   const [mode, setMode] = useState<"single" | "installments" | "recurring">("single");
 
   return (
-    <form action={formAction} className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm">
+    <form action={formAction} className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
         <div>
           <label htmlFor="supplier" className={LABEL}>
@@ -93,7 +93,7 @@ export function NewPayableForm({
       </div>
 
       {/* Repetição — some do caminho de quem só quer lançar uma conta */}
-      <fieldset className="mb-5 rounded-xl border border-border bg-surface p-4">
+      <fieldset className="mb-5 rounded-2xl border border-hairline bg-surface p-4">
         <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-ink">
           Repetição
         </legend>
@@ -251,7 +251,7 @@ export function NewPayableForm({
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex items-center justify-center rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60 min-h-10"
       >
         {pending ? "Lançando..." : "Lançar conta"}
       </button>

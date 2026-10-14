@@ -4,8 +4,8 @@ import { calcBillingTotal, listAllBillings, listFinancialClients } from "@/lib/f
 import { listPayables } from "@/lib/payables";
 import { remainingAmount } from "@/lib/payables-status";
 import { daysUntil, todayIso } from "@/lib/urgency";
-import { LogoutButton } from "@/components/ui/LogoutButton";
-import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
+import { ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
+import { HeroCard, PageHeader, QuickAction } from "@/components/financeiro/ui";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
@@ -42,7 +42,7 @@ export default async function CaixaPage({
 
   if (configError) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-surface px-6">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="max-w-lg text-center">
           <p className="text-xs uppercase tracking-[0.18em] font-semibold text-pending-ink mb-3">
             Configuração pendente
@@ -54,7 +54,7 @@ export default async function CaixaPage({
           </p>
           <p className="mt-3 text-xs text-secondary-ink">{configError}</p>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -138,69 +138,31 @@ export default async function CaixaPage({
   const saldo = balance.balance;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-surface py-12 sm:py-16 px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(6,95,70,0.06),transparent_55%)]" />
+    <>
+      <PageHeader title="Caixa" subtitle="Dinheiro que já entrou e saiu de fato" />
 
-      <div className="relative max-w-4xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/painel" className="text-xs text-neutral-ink hover:text-ink transition-colors">
-            ← Painel
-          </Link>
-          <LogoutButton />
+      {/* Saldo em destaque — é a métrica principal da tela */}
+      <HeroCard
+        label="Saldo em caixa"
+        value={currency.format(saldo)}
+        tone={saldo >= 0 ? "paid" : "overdue"}
+        hint={
+          <>
+            {balance.movements} movimentaç{balance.movements === 1 ? "ão" : "ões"} registrada
+            {balance.movements === 1 ? "" : "s"}
+          </>
+        }
+      >
+        <div className="flex items-start justify-between gap-2 sm:justify-start sm:gap-6">
+          <QuickAction href="/financeiro/caixa/extrato" label="Extrato" icon={ListBullets} />
+          <QuickAction href="/financeiro/caixa/dre" label="DRE" icon={ChartPieSlice} />
+          <QuickAction href="/financeiro" label="A receber" icon={HandCoins} />
+          <QuickAction href="/financeiro/pagar" label="A pagar" icon={Receipt} />
         </div>
-
-        <div className="flex flex-wrap items-start justify-between gap-4 mt-4 mb-5">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] font-semibold text-brand mb-3">
-              Virtent
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-ink">Controle financeiro</h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/financeiro/caixa/dre"
-              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg border border-border bg-white text-ink hover:bg-surface transition-colors"
-            >
-              Ver DRE
-            </Link>
-            <Link
-              href="/financeiro/caixa/extrato"
-              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors"
-            >
-              Ver extrato
-            </Link>
-          </div>
-        </div>
-
-        <div className="mb-5">
-          <FinanceTabs active="caixa" />
-        </div>
-
-        {/* Saldo em destaque — é a métrica principal da tela */}
-        <section
-          className={`rounded-2xl border p-6 sm:p-8 shadow-sm mb-4 ${
-            saldo >= 0 ? "border-paid-line bg-paid-bg" : "border-overdue-line bg-overdue-bg"
-          }`}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-ink mb-1.5">
-            Saldo em caixa
-          </p>
-          <p
-            className={`text-4xl sm:text-5xl font-extrabold tabular-nums tracking-tight ${
-              saldo >= 0 ? "text-paid-ink" : "text-overdue-ink"
-            }`}
-          >
-            {currency.format(saldo)}
-          </p>
-          <p className="mt-2 text-xs text-neutral-ink">
-            Dinheiro que já entrou e saiu de fato — {balance.movements} movimentaç
-            {balance.movements === 1 ? "ão" : "ões"} registrada
-            {balance.movements === 1 ? "" : "s"}.
-          </p>
-        </section>
+      </HeroCard>
 
         {/* Previsto — conceito diferente de saldo, rotulado pra não confundir */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="mb-6 mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SummaryCard
             label={`Entradas de ${capitalize(monthLongFmt.format(new Date()))}`}
             value={currency.format(entradasMes)}
@@ -230,7 +192,7 @@ export default async function CaixaPage({
         </div>
 
         {/* Resultado do mês */}
-        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm mb-6">
+        <section className="rounded-3xl bg-white shadow-card p-6 mb-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-bold text-ink">Resultado do mês</h2>
@@ -271,7 +233,7 @@ export default async function CaixaPage({
         </section>
 
         {/* Projeção */}
-        <section className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm mb-6">
+        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-ink">Saldo projetado</h2>
             <p className="text-xs text-secondary-ink">
@@ -285,7 +247,7 @@ export default async function CaixaPage({
             ].map(({ key, label, data }) => {
               const projected = saldo + data.receber - data.pagar;
               return (
-                <div key={key} className="rounded-xl border border-border p-4">
+                <div key={key} className="rounded-2xl border border-hairline p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-ink mb-3">
                     {label}
                   </p>
@@ -327,7 +289,7 @@ export default async function CaixaPage({
             })}
 
             {/* Data escolhida — mesmo cálculo, mas até uma data qualquer em vez de N dias fixos */}
-            <div className="rounded-xl border border-border p-4">
+            <div className="rounded-2xl border border-hairline p-4">
               <form action="/financeiro/caixa" className="mb-3 flex items-center gap-2">
                 <input
                   name="until"
@@ -339,7 +301,7 @@ export default async function CaixaPage({
                 />
                 <button
                   type="submit"
-                  className="shrink-0 rounded-lg bg-brand px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-hover transition-colors"
+                  className="shrink-0 rounded-full bg-brand px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-hover transition-colors min-h-10"
                 >
                   Ver
                 </button>
@@ -404,7 +366,7 @@ export default async function CaixaPage({
         </section>
 
         {/* Evolução */}
-        <section className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm mb-6">
+        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-ink">Evolução do saldo</h2>
             <p className="text-xs text-secondary-ink">Saldo acumulado ao fim de cada mês</p>
@@ -419,7 +381,6 @@ export default async function CaixaPage({
             date={opening ? opening.occurred_at.slice(0, 10) : today}
           />
         </div>
-      </div>
-    </main>
+    </>
   );
 }

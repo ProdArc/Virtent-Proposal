@@ -6,7 +6,7 @@ import {
   type FinancialBillingRow,
   type FinancialClientRow,
 } from "@/lib/financial";
-import { LogoutButton } from "@/components/ui/LogoutButton";
+import { btnSecondary, ConfigError, HeroCard, PageHeader } from "@/components/financeiro/ui";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { CashFlowPanel, type CashFlowWindow } from "@/components/financeiro/CashFlowPanel";
 import { listPayables } from "@/lib/payables";
@@ -80,21 +80,7 @@ export default async function DashboardPage({
     configError = err instanceof Error ? err.message : "Erro desconhecido ao conectar ao Supabase.";
   }
 
-  if (configError) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[#F9FBF8] px-6">
-        <div className="max-w-md text-center">
-          <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#B45309] mb-3">
-            Configuração pendente
-          </p>
-          <h1 className="text-xl font-bold text-[#18181B] mb-2">
-            Não foi possível conectar ao banco
-          </h1>
-          <p className="text-sm text-[#71717A] leading-relaxed">{configError}</p>
-        </div>
-      </main>
-    );
-  }
+  if (configError) return <ConfigError message={configError} />;
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const clientsById = new Map(clients.map((c) => [c.id, c]));
@@ -248,117 +234,102 @@ export default async function DashboardPage({
     STATUS_OPTIONS.find((o) => o.value === activeStatus)?.label.toLowerCase() ?? "";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#F9FBF8] py-12 sm:py-16 px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(6,95,70,0.06),transparent_55%)]" />
-
-      <div className="relative max-w-5xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <Link
-            href="/painel"
-            className="text-xs text-[#71717A] hover:text-[#18181B] transition-colors"
-          >
-            ← Painel
-          </Link>
-          <LogoutButton />
-        </div>
-
-        <div className="flex items-start justify-between gap-4 mt-4 mb-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#065F46] mb-3">
-              Virtent
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B]">
-              Dashboard financeiro
-            </h1>
-          </div>
-          <Link
-            href="/financeiro"
-            className="shrink-0 inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
-          >
+    <>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Faturamento por mês e por cliente"
+        actions={
+          <Link href="/financeiro" className={btnSecondary}>
             Ver clientes
           </Link>
-        </div>
+        }
+      />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 rounded-2xl border border-[#E4E4E7] bg-white p-4 shadow-sm">
-          <FilterSelect
-            name="month"
-            label="Mês de referência"
-            defaultValue={activeMonth}
-            options={MONTH_OPTIONS}
-            basePath="/financeiro/dashboard"
-          />
-          <FilterSelect
-            name="client"
-            label="Cliente"
-            defaultValue={activeClient}
-            options={CLIENT_OPTIONS}
-            basePath="/financeiro/dashboard"
-          />
-          <FilterSelect
-            name="status"
-            label="Status"
-            defaultValue={activeStatus}
-            options={STATUS_OPTIONS}
-            basePath="/financeiro/dashboard"
-          />
-        </div>
-        <p className="text-xs text-[#A1A1AA] mb-6 px-1">
-          Mostrando <strong className="text-[#52525B]">{statusLabel}</strong> de{" "}
-          <strong className="text-[#52525B]">{scopeLabel}</strong>. A implantação entra no mês do seu
-          vencimento; a mensalidade, no mês da referência.
-        </p>
-
-        {/* Índices macro */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">
-              {activeMonth ? "Clientes que entraram" : "Clientes"}
-            </p>
-            <p className="text-lg font-bold text-[#18181B] tabular-nums">{enteredClients.length}</p>
-            <p className="text-[11px] text-[#A1A1AA]">
-              {activeMonth ? monthLabel(activeMonth, monthShortFmt) : "no total"}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">
-              <span
-                className="inline-block h-2 w-2 rounded-sm mr-1.5 align-middle"
-                style={{ backgroundColor: SERIES_SETUP }}
-              />
-              Implantação
-            </p>
-            <p className="text-lg font-bold text-[#18181B] tabular-nums">
-              {currency.format(setupTotal)}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[#E4E4E7] bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#52525B] mb-1">
-              <span
-                className="inline-block h-2 w-2 rounded-sm mr-1.5 align-middle"
-                style={{ backgroundColor: SERIES_MONTHLY }}
-              />
-              Mensalidades
-            </p>
-            <p className="text-lg font-bold text-[#18181B] tabular-nums">
-              {currency.format(monthlyTotal)}
-            </p>
-            <p className="text-[11px] text-[#A1A1AA]">
-              inclui {currency.format(commissionTotal)} de comissão
-              {metaFeeTotal > 0 && <> e {currency.format(metaFeeTotal)} de adicional por disparo</>}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[#065F46]/25 bg-[#F0FAF6] px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold text-[#065F46] mb-1">Total faturado</p>
-            <p className="text-lg font-bold text-[#18181B] tabular-nums">
-              {currency.format(grandTotal)}
-            </p>
+      <HeroCard
+        label="Total faturado"
+        value={currency.format(grandTotal)}
+        hint={
+          <>
+            <strong className="font-semibold text-[#52525B]">{statusLabel}</strong> de{" "}
+            <strong className="font-semibold text-[#52525B]">{scopeLabel}</strong>
             {passThroughTotal > 0 && (
-              <p className="text-[11px] text-[#71717A]">
-                + {currency.format(passThroughTotal)} de repasse Meta (fora do faturamento)
-              </p>
+              <>
+                {" · "}+ {currency.format(passThroughTotal)} de repasse Meta (fora do faturamento)
+              </>
             )}
-          </div>
+          </>
+        }
+      />
+
+      <div className="mb-3 mt-4 grid grid-cols-1 gap-3 rounded-3xl bg-white p-4 shadow-card sm:grid-cols-3">
+        <FilterSelect
+          name="month"
+          label="Mês de referência"
+          defaultValue={activeMonth}
+          options={MONTH_OPTIONS}
+          basePath="/financeiro/dashboard"
+        />
+        <FilterSelect
+          name="client"
+          label="Cliente"
+          defaultValue={activeClient}
+          options={CLIENT_OPTIONS}
+          basePath="/financeiro/dashboard"
+        />
+        <FilterSelect
+          name="status"
+          label="Status"
+          defaultValue={activeStatus}
+          options={STATUS_OPTIONS}
+          basePath="/financeiro/dashboard"
+        />
+      </div>
+      <p className="mb-5 px-1 text-xs text-[#A1A1AA]">
+        A implantação entra no mês do seu vencimento; a mensalidade, no mês da referência.
+      </p>
+
+      {/* Índices macro */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-3xl bg-white px-5 py-4 shadow-card">
+          <p className="mb-1 text-xs font-medium text-[#71717A]">
+            {activeMonth ? "Clientes que entraram" : "Clientes"}
+          </p>
+          <p className="text-xl font-extrabold tracking-tight text-[#18181B] tabular-nums">
+            {enteredClients.length}
+          </p>
+          <p className="text-[11.5px] text-[#A1A1AA]">
+            {activeMonth ? monthLabel(activeMonth, monthShortFmt) : "no total"}
+          </p>
         </div>
+        <div className="rounded-3xl bg-white px-5 py-4 shadow-card">
+          <p className="mb-1 text-xs font-medium text-[#71717A]">
+            <span
+              className="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle"
+              style={{ backgroundColor: SERIES_SETUP }}
+            />
+            Implantação
+          </p>
+          <p className="text-xl font-extrabold tracking-tight text-[#18181B] tabular-nums">
+            {currency.format(setupTotal)}
+          </p>
+        </div>
+        <div className="col-span-2 rounded-3xl bg-white px-5 py-4 shadow-card sm:col-span-1">
+          <p className="mb-1 text-xs font-medium text-[#71717A]">
+            <span
+              className="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle"
+              style={{ backgroundColor: SERIES_MONTHLY }}
+            />
+            Mensalidades
+          </p>
+          <p className="text-xl font-extrabold tracking-tight text-[#18181B] tabular-nums">
+            {currency.format(monthlyTotal)}
+          </p>
+          <p className="text-[11.5px] text-[#A1A1AA]">
+            inclui {currency.format(commissionTotal)} de comissão
+            {metaFeeTotal > 0 && <> e {currency.format(metaFeeTotal)} de adicional por disparo</>}
+          </p>
+        </div>
+      </div>
 
         {cashFlow && (
           <div className="mb-6">
@@ -367,7 +338,7 @@ export default async function DashboardPage({
         )}
 
         {/* Evolução mensal */}
-        <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 shadow-sm mb-6">
+        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
             <div>
               <h2 className="text-sm font-bold text-[#18181B]">Faturamento por mês</h2>
@@ -516,7 +487,7 @@ export default async function DashboardPage({
         </section>
 
         {/* Faturamento por cliente */}
-        <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 shadow-sm">
+        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-[#18181B]">Faturamento por cliente</h2>
             <p className="text-xs text-[#A1A1AA]">
@@ -528,7 +499,50 @@ export default async function DashboardPage({
           {clientRows.length === 0 ? (
             <p className="text-sm text-[#71717A]">Nenhum faturamento no filtro selecionado.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <ul className="divide-y divide-hairline md:hidden">
+              {clientRows.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/financeiro/${r.id}`}
+                    className="flex items-start justify-between gap-3 py-3.5"
+                  >
+                    <span className="min-w-0">
+                      <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-[#18181B]">
+                        {r.name}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[#71717A]">
+                        {[
+                          r.setup > 0 && `Implantação ${currency.format(r.setup)}`,
+                          r.monthly > 0 && `Mensalidade ${currency.format(r.monthly)}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[15px] font-bold tabular-nums text-[#18181B]">
+                        {currency.format(r.total)}
+                      </span>
+                      {r.passThrough > 0 && (
+                        <span className="block text-[11px] text-[#A1A1AA] tabular-nums">
+                          + {currency.format(r.passThrough)} Meta
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+              <li className="flex items-center justify-between gap-3 py-3.5">
+                <span className="text-xs font-semibold text-[#71717A]">
+                  Total ({clientRows.length} cliente{clientRows.length === 1 ? "" : "s"})
+                </span>
+                <span className="text-base font-extrabold tabular-nums text-[#18181B]">
+                  {currency.format(grandTotal)}
+                </span>
+              </li>
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#E4E4E7]">
@@ -605,9 +619,9 @@ export default async function DashboardPage({
                 </tfoot>
               </table>
             </div>
+            </>
           )}
         </section>
-      </div>
-    </main>
+    </>
   );
 }

@@ -14,7 +14,7 @@ export interface CashFlowWindow {
  */
 export function CashFlowPanel({ windows }: { windows: CashFlowWindow[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm">
+    <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
       <div className="mb-5">
         <h2 className="text-sm font-bold text-ink">Fluxo de caixa projetado</h2>
         <p className="text-xs text-secondary-ink">
@@ -27,7 +27,7 @@ export function CashFlowPanel({ windows }: { windows: CashFlowWindow[] }) {
           const balance = w.toReceive - w.toPay;
           const positive = balance >= 0;
           return (
-            <div key={w.days} className="rounded-xl border border-border p-4">
+            <div key={w.days} className="rounded-2xl border border-hairline p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-ink mb-3">
                 Próximos {w.days} dias
               </p>

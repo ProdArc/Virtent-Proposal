@@ -1,5 +1,14 @@
 import Link from "next/link";
 import {
+  BellRinging,
+  CaretDown,
+  ChartLineUp,
+  Plus,
+  Rows,
+  SquaresFour,
+  WarningCircle,
+} from "@phosphor-icons/react/dist/ssr";
+import {
   distinctSegments,
   listAllBillings,
   listFinancialClients,
@@ -15,14 +24,21 @@ import {
   type StatusFilter,
   type UrgencyGroup,
 } from "@/lib/financeiro-status";
-import { LogoutButton } from "@/components/ui/LogoutButton";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { ClientCard } from "@/components/financeiro/ClientCard";
-import { SummaryCard } from "@/components/financeiro/SummaryCard";
+import { ClientMatrix } from "@/components/financeiro/ClientMatrix";
 import { StatusChips } from "@/components/financeiro/StatusChips";
 import { SearchInput } from "@/components/financeiro/SearchInput";
 import { UrgencyGroupHeader } from "@/components/financeiro/UrgencyGroupHeader";
-import { FinanceTabs } from "@/components/financeiro/FinanceTabs";
+import {
+  btnPrimary,
+  btnSecondary,
+  ConfigError,
+  EmptyState,
+  HeroCard,
+  PageHeader,
+  QuickAction,
+} from "@/components/financeiro/ui";
 import { BulkSelectionProvider } from "@/components/financeiro/BulkSelectionContext";
 import { BulkActionBar } from "@/components/financeiro/BulkActionBar";
 
@@ -47,9 +63,11 @@ export const dynamic = "force-dynamic";
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; ref?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; ref?: string; view?: string }>;
 }) {
-  const { status, q, ref } = await searchParams;
+  const { status, q, ref, view: viewParam } = await searchParams;
+  // "lista" é o padrão e não vai na URL; "matriz" = clientes x meses.
+  const view: "lista" | "matriz" = viewParam === "matriz" ? "matriz" : "lista";
   const activeFilter: StatusFilter = VALID_FILTERS.includes(status as StatusFilter)
     ? (status as StatusFilter)
     : "";
@@ -65,19 +83,7 @@ export default async function FinanceiroPage({
     configError = err instanceof Error ? err.message : "Erro desconhecido ao conectar ao Supabase.";
   }
 
-  if (configError) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-surface px-6">
-        <div className="max-w-md text-center">
-          <p className="text-xs uppercase tracking-[0.18em] font-semibold text-pending-ink mb-3">
-            Configuração pendente
-          </p>
-          <h1 className="text-xl font-bold text-ink mb-2">Não foi possível conectar ao banco</h1>
-          <p className="text-sm text-neutral-ink leading-relaxed">{configError}</p>
-        </div>
-      </main>
-    );
-  }
+  if (configError) return <ConfigError message={configError} />;
 
   const today = todayIso();
 
@@ -139,158 +145,193 @@ export default async function FinanceiroPage({
     if (filter) params.set("status", filter);
     if (search) params.set("q", search);
     if (activeRef) params.set("ref", activeRef);
+    if (view === "matriz") params.set("view", "matriz");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
 
+  /** Link pra outra visão mantendo os filtros ativos. */
+  const viewHref = (target: "lista" | "matriz") => {
+    const params = new URLSearchParams();
+    if (activeFilter) params.set("status", activeFilter);
+    if (search) params.set("q", search);
+    if (activeRef) params.set("ref", activeRef);
+    if (target === "matriz") params.set("view", "matriz");
+    const query = params.toString();
+    return query ? `/financeiro?${query}` : "/financeiro";
+  };
+
+  // Colunas da matriz: os 6 meses mais recentes com cobrança, em ordem cronológica.
+  const matrixMonths = availableRefs.slice(0, 6).reverse();
+  const byName = (a: { client: FinancialClientRow }, b: { client: FinancialClientRow }) =>
+    a.client.name.localeCompare(b.client.name, "pt-BR");
+
+  const openClients = counts.upcoming + counts.overdue;
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-surface py-12 sm:py-16 px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(6,95,70,0.06),transparent_55%)]" />
-
-      <div className="relative max-w-4xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/painel" className="text-xs text-neutral-ink hover:text-ink transition-colors">
-            ← Painel
-          </Link>
-          <LogoutButton />
-        </div>
-
-        <div className="flex items-start justify-between gap-4 mt-4 mb-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] font-semibold text-brand mb-3">
-              Virtent
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-ink">Controle financeiro</h1>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/financeiro/dashboard"
-              className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-lg border border-border bg-white text-ink hover:bg-surface transition-colors"
-            >
-              Dashboard
+    <>
+      <PageHeader
+        title="A receber"
+        subtitle={`${activeClientsCount} cliente${activeClientsCount === 1 ? "" : "s"} ativo${activeClientsCount === 1 ? "" : "s"}`}
+        actions={
+          // `hidden` no wrapper: no próprio link, `inline-flex` do btnPrimary
+          // disputa o display e pode ganhar.
+          <span className="hidden sm:block">
+            <Link href="/financeiro/novo" className={btnPrimary}>
+              <Plus size={18} weight="bold" aria-hidden="true" />
+              Novo cliente
             </Link>
-            <Link
-              href="/financeiro/novo"
-              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors"
-            >
-              + Novo cliente
-            </Link>
-          </div>
-        </div>
+          </span>
+        }
+      />
 
-        <div className="mb-5">
-          <FinanceTabs active="receber" />
-        </div>
-
-        {/* Resumo — cada card filtra a lista abaixo */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-          <SummaryCard
-            label="Clientes"
-            value={String(activeClientsCount)}
-            hint={
-              activeClientsCount !== clients.length
-                ? `${clients.length - activeClientsCount} cancelado${clients.length - activeClientsCount === 1 ? "" : "s"} à parte`
-                : undefined
-            }
-            href={hrefFor("")}
-            active={activeFilter === ""}
-          />
-          <SummaryCard
-            label="Em aberto"
-            value={currency.format(totalOpen)}
-            hint={`${counts.upcoming + counts.overdue} cliente${counts.upcoming + counts.overdue === 1 ? "" : "s"}`}
-            href={hrefFor("upcoming")}
-            active={activeFilter === "upcoming"}
-          />
-          <SummaryCard
-            label="Atrasadas"
-            value={String(totalOverdue)}
-            tone={totalOverdue > 0 ? "overdue" : "neutral"}
-            hint="cobranças vencidas"
+      <HeroCard
+        label="Em aberto"
+        value={currency.format(totalOpen)}
+        hint={
+          <>
+            {openClients} cliente{openClients === 1 ? "" : "s"} com cobrança em aberto
+            {totalOverdue > 0 && (
+              <>
+                {" · "}
+                <span className="font-semibold text-overdue-ink">
+                  {totalOverdue} atrasada{totalOverdue === 1 ? "" : "s"}
+                </span>
+              </>
+            )}
+          </>
+        }
+      >
+        <div className="flex items-start justify-between gap-2 sm:justify-start sm:gap-6">
+          <QuickAction href="/financeiro/novo" label="Novo cliente" icon={Plus} />
+          <QuickAction
             href={hrefFor("overdue")}
-            active={activeFilter === "overdue"}
+            label="Atrasadas"
+            icon={WarningCircle}
+            badge={totalOverdue}
+            tone="danger"
           />
-          <SummaryCard
-            label="Ação urgente"
-            value={String(totalUrgent)}
-            tone={totalUrgent > 0 ? "overdue" : "paid"}
-            hint="vencidas ou em ≤7 dias"
+          <QuickAction
             href={hrefFor("urgent")}
-            active={activeFilter === "urgent"}
+            label="Urgentes"
+            icon={BellRinging}
+            badge={totalUrgent}
+            tone="danger"
+          />
+          <QuickAction href="/financeiro/dashboard" label="Dashboard" icon={ChartLineUp} />
+        </div>
+      </HeroCard>
+
+      {/* Filtros */}
+      <div className="mb-5 mt-5 flex flex-col gap-3">
+        <div className="grid gap-3 sm:grid-cols-[1fr_14rem]">
+          <SearchInput initialValue={search} />
+          <FilterSelect
+            name="ref"
+            defaultValue={activeRef}
+            options={REF_OPTIONS}
+            basePath="/financeiro"
           />
         </div>
-
-        {/* Filtros */}
-        <div className="flex flex-col gap-3 mb-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <StatusChips active={activeFilter} counts={counts} search={search} reference={activeRef} />
-            <div className="w-full sm:w-64 shrink-0">
-              <SearchInput initialValue={search} />
-            </div>
-          </div>
-          <div className="w-full sm:w-64">
-            <FilterSelect
-              name="ref"
-              label="Referência"
-              defaultValue={activeRef}
-              options={REF_OPTIONS}
-              basePath="/financeiro"
-            />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <StatusChips
+            active={activeFilter}
+            counts={counts}
+            search={search}
+            reference={activeRef}
+            view={view === "matriz" ? "matriz" : undefined}
+          />
+          <div
+            role="group"
+            aria-label="Modo de exibição"
+            className="inline-flex shrink-0 rounded-full bg-white p-1 shadow-card"
+          >
+            {(
+              [
+                ["lista", "Lista", Rows],
+                ["matriz", "Matriz", SquaresFour],
+              ] as const
+            ).map(([key, label, IconCmp]) => (
+              <Link
+                key={key}
+                href={viewHref(key)}
+                aria-current={view === key ? "true" : undefined}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                  view === key ? "bg-ink text-white" : "text-muted hover:text-ink"
+                }`}
+              >
+                <IconCmp size={16} weight="bold" aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
+      </div>
 
-        {clients.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
-            <p className="text-sm font-semibold text-ink mb-1">Nenhum cliente cadastrado</p>
-            <p className="text-sm text-neutral-ink mb-5">
-              Cadastre o primeiro cliente para começar a acompanhar as cobranças.
-            </p>
-            <Link
-              href="/financeiro/novo"
-              className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors"
-            >
-              + Novo cliente
+      {clients.length === 0 ? (
+        <EmptyState
+          title="Nenhum cliente cadastrado"
+          description="Cadastre o primeiro cliente para começar a acompanhar as cobranças."
+          action={
+            <Link href="/financeiro/novo" className={btnPrimary}>
+              <Plus size={18} weight="bold" aria-hidden="true" />
+              Novo cliente
             </Link>
-          </div>
-        ) : visible.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
-            <p className="text-sm font-semibold text-ink mb-1">Nenhum cliente encontrado</p>
-            <p className="text-sm text-neutral-ink mb-5">
-              {search
-                ? `Nada corresponde a "${search}" com esse filtro.`
-                : "Nenhum cliente neste filtro — o que é uma boa notícia."}
-            </p>
-            <Link
-              href="/financeiro"
-              className="text-sm font-semibold text-brand hover:text-brand-hover transition-colors"
-            >
+          }
+        />
+      ) : visible.length === 0 ? (
+        <EmptyState
+          title="Nenhum cliente encontrado"
+          description={
+            search
+              ? `Nada corresponde a "${search}" com esse filtro.`
+              : "Nenhum cliente neste filtro — o que é uma boa notícia."
+          }
+          action={
+            <Link href="/financeiro" className={btnSecondary}>
               Limpar filtros
             </Link>
-          </div>
-        ) : (
-          <BulkSelectionProvider>
-            <BulkActionBar
-              visibleIds={visible.map((e) => e.client.id)}
-              segmentSuggestions={segmentSuggestions}
-            />
-            {grouped.map(({ group, items }) => (
-              <section key={group}>
+          }
+        />
+      ) : view === "matriz" ? (
+        <ClientMatrix
+          rows={[...visible].sort(byName)}
+          months={matrixMonths}
+          today={today}
+        />
+      ) : (
+        <BulkSelectionProvider>
+          <BulkActionBar
+            visibleIds={visible.map((e) => e.client.id)}
+            segmentSuggestions={segmentSuggestions}
+          />
+          {grouped.map(({ group, items }) => (
+            // Cada faixa recolhe: com muitos clientes dá pra esconder o que já
+            // está resolvido ("Em dia" já começa fechado) e ficar só com o que pede ação.
+            <details key={group} open={group !== "ok"} className="group/sec">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 focus:outline-none">
                 <UrgencyGroupHeader group={group as UrgencyGroup} count={items.length} />
-                <div className="rounded-2xl border border-border bg-white overflow-hidden shadow-sm">
-                  {items.map(({ client, billings: rows, status: st }) => (
-                    <ClientCard
-                      key={client.id}
-                      client={client}
-                      billings={rows}
-                      status={st as ClientStatus}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </BulkSelectionProvider>
-        )}
-      </div>
-    </main>
+                <CaretDown
+                  size={16}
+                  weight="bold"
+                  aria-hidden="true"
+                  className="mb-3 shrink-0 self-end text-subtle transition-transform group-open/sec:rotate-180"
+                />
+              </summary>
+              <div className="overflow-hidden rounded-3xl bg-white shadow-card">
+                {items.map(({ client, billings: rows, status: st }) => (
+                  <ClientCard
+                    key={client.id}
+                    client={client}
+                    billings={rows}
+                    status={st as ClientStatus}
+                  />
+                ))}
+              </div>
+            </details>
+          ))}
+        </BulkSelectionProvider>
+      )}
+    </>
   );
 }

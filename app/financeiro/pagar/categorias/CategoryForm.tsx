@@ -18,8 +18,8 @@ export function CategoryForm({ category }: { category?: CategoryRow }) {
       action={formAction}
       className={
         editing
-          ? "rounded-xl border border-border bg-white p-4"
-          : "rounded-2xl border border-border bg-white p-5 shadow-sm"
+          ? "rounded-2xl border border-hairline bg-white p-4"
+          : "rounded-3xl bg-white shadow-card p-5"
       }
     >
       {category && <input type="hidden" name="id" value={category.id} />}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { FinancialBillingRow } from "@/lib/financial";
 import { calcBillingTotal } from "@/lib/financial";
 import { billingState, STATE_LABEL, type BillingState } from "@/lib/financeiro-status";
@@ -28,18 +29,25 @@ export function MonthTimeline({
   billings,
   today,
   limit = 12,
+  order = "desc",
+  clientId,
 }: {
   billings: FinancialBillingRow[];
   today: string;
   limit?: number;
+  /** "desc": mais recente primeiro (padrão do painel). "asc": do mais antigo ao mais novo — lê como uma linha do tempo. */
+  order?: "asc" | "desc";
+  /** Com o id do cliente, cada mês vira link pra aquela referência na ficha. */
+  clientId?: string;
 }) {
   const byMonth = new Map<string, FinancialBillingRow[]>();
   for (const b of billings) {
     const key = b.due_date.slice(0, 7);
     byMonth.set(key, [...(byMonth.get(key) ?? []), b]);
   }
-  // Mais recente primeiro, como no resto do painel.
+  // Pega sempre os `limit` meses mais recentes; só a ordem de exibição muda.
   const recent = [...byMonth.entries()].sort(([a], [b]) => b.localeCompare(a)).slice(0, limit);
+  if (order === "asc") recent.reverse();
 
   if (recent.length === 0) {
     return <p className="text-xs text-secondary-ink">Nenhuma referência gerada ainda.</p>;
@@ -62,12 +70,9 @@ export function MonthTimeline({
             return `${kind}${STATE_LABEL[billingState(b, today)]} · ${currency.format(calcBillingTotal(b).total_value)} · ${sent}`;
           })
           .join("\n");
-        return (
-          <span
-            key={monthKey}
-            title={`${label}\n${details}`}
-            className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none ${CELL_CLASS[state]}`}
-          >
+        const cellClass = `relative flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none ${CELL_CLASS[state]}`;
+        const content = (
+          <>
             {MONTH_ABBR[monthIndex]}
             {allSent && (
               <span
@@ -76,6 +81,21 @@ export function MonthTimeline({
                 className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-white bg-brand"
               />
             )}
+          </>
+        );
+        return clientId ? (
+          <Link
+            key={monthKey}
+            href={`/financeiro/${clientId}?ref=${monthKey}`}
+            title={`${label}\n${details}`}
+            aria-label={`${label}: ${STATE_LABEL[state]}`}
+            className={`${cellClass} transition-transform hover:scale-110`}
+          >
+            {content}
+          </Link>
+        ) : (
+          <span key={monthKey} title={`${label}\n${details}`} className={cellClass}>
+            {content}
           </span>
         );
       })}

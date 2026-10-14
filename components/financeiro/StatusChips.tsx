@@ -20,23 +20,26 @@ export function StatusChips({
   counts,
   search,
   reference,
+  view,
 }: {
   active: StatusFilter;
   counts: Record<StatusFilter, number>;
   search: string;
   reference?: string;
+  view?: string;
 }) {
   const hrefFor = (filter: StatusFilter) => {
     const params = new URLSearchParams();
     if (filter) params.set("status", filter);
     if (search) params.set("q", search);
     if (reference) params.set("ref", reference);
+    if (view) params.set("view", view);
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="fin-scroll-x -mx-4 flex items-center gap-2 px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
       {ORDER.map((filter) => {
         const isActive = filter === active;
         return (
@@ -44,10 +47,10 @@ export function StatusChips({
             key={filter || "all"}
             href={hrefFor(filter)}
             aria-current={isActive ? "true" : undefined}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+            className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
               isActive
                 ? ACTIVE_CLASS[filter]
-                : "border-border bg-white text-neutral-ink hover:border-brand/40 hover:text-ink"
+                : "border-transparent bg-white text-muted shadow-card hover:text-ink"
             }`}
           >
             {FILTER_LABEL[filter]}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/financeiro/ui";
 import { listPayables, listSuppliers, type PayableRow, type SupplierRow } from "@/lib/payables";
 import { remainingAmount } from "@/lib/payables-status";
 import { todayIso } from "@/lib/urgency";
@@ -42,22 +43,12 @@ export default async function FornecedoresPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface py-12 sm:py-16 px-6">
-      <div className="max-w-3xl mx-auto">
-        <Link
-          href="/financeiro/pagar"
-          className="text-xs text-neutral-ink hover:text-ink transition-colors"
-        >
-          ← Contas a pagar
-        </Link>
-        <p className="text-xs uppercase tracking-[0.18em] font-semibold text-brand mt-4 mb-3">
-          Virtent
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink mb-1">Fornecedores</h1>
-        <p className="text-sm text-neutral-ink mb-8">
-          {suppliers.length} cadastrado{suppliers.length === 1 ? "" : "s"}. Os totais consideram as
-          contas lançadas para cada um.
-        </p>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        back={{ href: "/financeiro/pagar", label: "Voltar para A pagar" }}
+        title="Fornecedores"
+        subtitle={`${suppliers.length} cadastrado${suppliers.length === 1 ? "" : "s"}. Os totais consideram as contas lançadas para cada um.`}
+      />
 
         {loadError && (
           <p className="mb-6 rounded-lg border border-pending-line bg-pending-bg px-3 py-2 text-sm text-pending-ink">
@@ -70,7 +61,7 @@ export default async function FornecedoresPage() {
         </div>
 
         {suppliers.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center">
             <p className="text-sm font-semibold text-ink mb-1">Nenhum fornecedor cadastrado</p>
             <p className="text-sm text-neutral-ink">
               Cadastre acima, ou simplesmente digite o nome ao lançar uma conta — ele é criado
@@ -78,11 +69,11 @@ export default async function FornecedoresPage() {
             </p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-white overflow-hidden shadow-sm">
+          <div className="rounded-3xl bg-white shadow-card overflow-hidden">
             {suppliers.map((s) => {
               const st = stats.get(s.id) ?? { openTotal: 0, openCount: 0, month: 0, year: 0 };
               return (
-                <details key={s.id} className="group border-b border-border last:border-b-0">
+                <details key={s.id} className="group border-b border-hairline last:border-b-0">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-surface transition-colors">
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-ink">{s.name}</span>
@@ -101,7 +92,7 @@ export default async function FornecedoresPage() {
                     </span>
                   </summary>
 
-                  <div className="border-t border-border bg-surface px-4 py-4">
+                  <div className="border-t border-hairline bg-surface px-4 py-4">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                       <div>
                         <p className="text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
@@ -158,7 +149,6 @@ export default async function FornecedoresPage() {
             })}
           </div>
         )}
-      </div>
-    </main>
+    </div>
   );
 }

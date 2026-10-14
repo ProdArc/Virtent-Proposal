@@ -20,8 +20,8 @@ export function SupplierForm({ supplier }: { supplier?: SupplierRow }) {
       action={formAction}
       className={
         editing
-          ? "rounded-xl border border-border bg-white p-4"
-          : "rounded-2xl border border-border bg-white p-5 shadow-sm"
+          ? "rounded-2xl border border-hairline bg-white p-4"
+          : "rounded-3xl bg-white shadow-card p-5"
       }
     >
       {supplier && <input type="hidden" name="id" value={supplier.id} />}
@@ -65,7 +65,7 @@ export function SupplierForm({ supplier }: { supplier?: SupplierRow }) {
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
+        className="inline-flex items-center justify-center rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60 min-h-10"
       >
         {pending ? "Salvando..." : editing ? "Salvar alterações" : "Cadastrar fornecedor"}
       </button>

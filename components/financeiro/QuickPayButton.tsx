@@ -35,7 +35,7 @@ export function QuickPayButton({
           void action(id);
         });
       }}
-      className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+      className={`h-9 shrink-0 rounded-full px-3.5 text-xs font-semibold transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
         variant === "solid"
           ? "bg-brand text-white hover:bg-brand-hover"
           : "border border-border bg-white text-neutral-ink hover:text-ink"

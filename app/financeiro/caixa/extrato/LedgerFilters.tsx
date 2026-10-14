@@ -13,7 +13,7 @@ interface Current {
 }
 
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30";
 
 export function LedgerFilters({
   current,
@@ -49,17 +49,17 @@ export function LedgerFilters({
 
   return (
     <div className="mb-4 flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="fin-scroll-x -mx-4 flex items-center gap-2 px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {chips.map((c) => (
           <button
             key={c.value || "all"}
             type="button"
             onClick={() => go({ type: c.value })}
             aria-pressed={current.type === c.value}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+            className={`inline-flex h-10 shrink-0 items-center rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
               current.type === c.value
                 ? c.active
-                : "border-border bg-white text-neutral-ink hover:border-brand/40 hover:text-ink"
+                : "border-transparent bg-white text-muted shadow-card hover:text-ink"
             }`}
           >
             {c.label}
@@ -102,7 +102,7 @@ export function LedgerFilters({
             aria-label="De"
             value={current.from}
             onChange={(e) => go({ from: e.target.value })}
-            className={`${FIELD} text-xs`}
+            className={`${FIELD} min-w-0 !px-3 !text-[13px]`}
           />
           <span className="text-xs text-secondary-ink">até</span>
           <input
@@ -110,7 +110,7 @@ export function LedgerFilters({
             aria-label="Até"
             value={current.to}
             onChange={(e) => go({ to: e.target.value })}
-            className={`${FIELD} text-xs`}
+            className={`${FIELD} min-w-0 !px-3 !text-[13px]`}
           />
         </div>
       </div>

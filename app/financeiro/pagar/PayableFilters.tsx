@@ -62,7 +62,7 @@ export function PayableFilters({
 
   return (
     <div className="mb-4 flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="fin-scroll-x -mx-4 flex items-center gap-2 px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {ORDER.map((filter) => {
           const isActive = filter === active;
           return (
@@ -71,10 +71,10 @@ export function PayableFilters({
               type="button"
               onClick={() => go({ status: filter })}
               aria-pressed={isActive}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+              className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                 isActive
                   ? ACTIVE_CLASS[filter]
-                  : "border-border bg-white text-neutral-ink hover:border-brand/40 hover:text-ink"
+                  : "border-transparent bg-white text-muted shadow-card hover:text-ink"
               }`}
             >
               {labels[filter]}
@@ -99,7 +99,7 @@ export function PayableFilters({
               if (timer.current) clearTimeout(timer.current);
               timer.current = setTimeout(() => go({ q: next.trim() }), 300);
             }}
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="w-full w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
         </div>
 
@@ -107,7 +107,7 @@ export function PayableFilters({
           aria-label="Filtrar por fornecedor"
           value={current.supplier}
           onChange={(e) => go({ supplier: e.target.value })}
-          className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
           <option value="">Todos os fornecedores</option>
           {suppliers.map((s) => (
@@ -121,7 +121,7 @@ export function PayableFilters({
           aria-label="Filtrar por categoria"
           value={current.category}
           onChange={(e) => go({ category: e.target.value })}
-          className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
@@ -138,7 +138,7 @@ export function PayableFilters({
             aria-label="Vencimento a partir de"
             value={current.from}
             onChange={(e) => go({ from: e.target.value })}
-            className="w-full rounded-lg border border-border bg-white px-2 py-2 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="w-full min-w-0 rounded-2xl border-0 bg-white px-3 py-2.5 text-[13px] text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
           <span className="text-xs text-secondary-ink">até</span>
           <input
@@ -146,7 +146,7 @@ export function PayableFilters({
             aria-label="Vencimento até"
             value={current.to}
             onChange={(e) => go({ to: e.target.value })}
-            className="w-full rounded-lg border border-border bg-white px-2 py-2 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="w-full min-w-0 rounded-2xl border-0 bg-white px-3 py-2.5 text-[13px] text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
         </div>
       </div>

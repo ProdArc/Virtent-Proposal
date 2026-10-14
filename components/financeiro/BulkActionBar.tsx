@@ -38,17 +38,17 @@ export function BulkActionBar({
   }
 
   return (
-    <div className="mb-5 flex flex-col gap-2">
+    <div className="mb-5 hidden flex-col gap-2 sm:flex">
       <button
         type="button"
         onClick={() => (allVisibleSelected ? clear() : selectAll(visibleIds))}
-        className="self-start text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+        className="self-start px-1 py-1 text-xs font-semibold text-brand transition-colors hover:text-brand-hover"
       >
         {allVisibleSelected ? "Limpar seleção" : `Selecionar todos os ${visibleIds.length} visíveis`}
       </button>
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand/30 bg-brand-light px-4 py-3">
+        <div className="sticky top-3 z-30 flex flex-wrap items-center gap-2 rounded-3xl bg-white px-4 py-3 shadow-float ring-1 ring-brand/25">
           <span className="text-xs font-semibold text-ink shrink-0">
             {selected.size} selecionado{selected.size === 1 ? "" : "s"}
           </span>
@@ -58,7 +58,7 @@ export function BulkActionBar({
             onChange={(e) => setSegment(e.target.value)}
             list="bulk-segment-suggestions"
             placeholder="Segmento pra aplicar (ex: Franquia)"
-            className="min-w-0 flex-1 rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="min-w-[10rem] flex-1 rounded-2xl border border-hairline bg-white px-3 py-1.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
           <datalist id="bulk-segment-suggestions">
             {segmentSuggestions.map((s) => (
@@ -69,14 +69,14 @@ export function BulkActionBar({
             type="button"
             onClick={apply}
             disabled={pending || !segment.trim()}
-            className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-hover disabled:opacity-60 transition-colors"
+            className="h-10 shrink-0 rounded-full bg-brand px-4 text-xs font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
           >
             {pending ? "Aplicando..." : `Aplicar a ${selected.size}`}
           </button>
           <button
             type="button"
             onClick={clear}
-            className="shrink-0 text-xs font-medium text-secondary-ink hover:text-ink transition-colors"
+            className="h-10 shrink-0 px-2 text-xs font-medium text-secondary-ink transition-colors hover:text-ink"
           >
             Cancelar
           </button>

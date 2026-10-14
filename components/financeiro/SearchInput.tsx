@@ -34,7 +34,7 @@ export function SearchInput({ initialValue }: { initialValue: string }) {
         viewBox="0 0 20 20"
         fill="none"
         aria-hidden="true"
-        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
+        className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-subtle"
       >
         <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.75" />
         <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
@@ -50,7 +50,7 @@ export function SearchInput({ initialValue }: { initialValue: string }) {
           if (timer.current) clearTimeout(timer.current);
           timer.current = setTimeout(() => push(next), 300);
         }}
-        className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+        className="w-full rounded-2xl border-0 bg-white py-2.5 pl-11 pr-4 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
       />
     </div>
   );

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   calcBillingTotal,
@@ -14,12 +13,14 @@ import {
 } from "@/lib/financial";
 import { billingEmailBlockedReason, renderBillingEmail, renderSetupEmail, setupEmailBlockedReason } from "@/lib/email";
 import { billingKindOf, billingMethodTags, formatFee, hasMonthlyBilling } from "@/lib/billing-methods";
+import { CycleSwitcher, type CycleTab } from "@/components/financeiro/CycleSwitcher";
+import type { Tone } from "@/lib/urgency";
 import { EditClientForm } from "./EditClientForm";
 import { ConfirmButton } from "./ConfirmButton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { SendEmailButton } from "@/components/ui/SendEmailButton";
-import { LogoutButton } from "@/components/ui/LogoutButton";
+import { PageHeader } from "@/components/financeiro/ui";
 import {
   deleteBillingAction,
   deleteBillingComprovanteAction,
@@ -91,10 +92,13 @@ export const dynamic = "force-dynamic";
 
 export default async function FinanceiroClientPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ ref?: string }>;
 }) {
   const { id } = await params;
+  const { ref } = await searchParams;
 
   const clientRow = await getFinancialClient(id);
   if (!clientRow) notFound();
@@ -144,16 +148,6 @@ export default async function FinanceiroClientPage({
   const openTotal = openBillings.reduce((sum, b) => sum + calcBillingTotal(b).total_value, 0);
   const receivedTotal = paidBillings.reduce((sum, b) => sum + calcBillingTotal(b).total_value, 0);
 
-  // Ciclo atual e pendências sempre visíveis (e abertas por padrão); ciclos
-  // passados já pagos vão pro histórico colapsado.
-  // Ciclos futuros (gerados com antecedência) vão pro fim e fechados: no topo
-  // e abertos, eram confundidos com o ciclo do mês e recebiam o valor
-  // arrecadado no lugar errado — e o dashboard do mês ficava sem a comissão.
-  const visibleBillings = billings
-    .filter((b) => !b.paid || isSameCycle(b.due_date, now))
-    .sort((a, b) => Number(isFuture(a, todayIso)) - Number(isFuture(b, todayIso)));
-  const historicalBillings = billings.filter((b) => b.paid && !isSameCycle(b.due_date, now));
-
   // Ciclo que o botão "Gerar próxima mensalidade" criaria — além do que
   // ensureCurrentBilling já adianta automaticamente, pra quando o usuário
   // quer forçar a mão (ver lib/financial.ts).
@@ -190,15 +184,15 @@ export default async function FinanceiroClientPage({
     return (
       <details
         key={b.id}
-        open={(!b.paid && !future) || current}
-        className="group rounded-xl border border-[#E4E4E7] bg-white overflow-hidden open:shadow-sm transition-shadow"
+        open
+        className="group rounded-2xl border border-hairline bg-white overflow-hidden open:shadow-sm transition-shadow"
       >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 select-none hover:bg-[#F9FBF8] transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             <ChevronIcon />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-[#18181B] truncate">{cycleLabel(b.due_date)}</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-[15px] font-semibold text-[#18181B]">{cycleLabel(b.due_date)}</p>
                 {isMeta ? (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#6D28D9] shrink-0">
                     Repasse Meta
@@ -263,7 +257,7 @@ export default async function FinanceiroClientPage({
                   </div>
                   <SubmitButton
                     pendingLabel="Salvando..."
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                    className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                   >
                     Salvar
                   </SubmitButton>
@@ -292,7 +286,7 @@ export default async function FinanceiroClientPage({
                   </div>
                   <SubmitButton
                     pendingLabel="Salvando..."
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                    className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                   >
                     Salvar
                   </SubmitButton>
@@ -310,7 +304,7 @@ export default async function FinanceiroClientPage({
                     </div>
                     <SubmitButton
                       pendingLabel="Salvando..."
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                     >
                       Salvar
                     </SubmitButton>
@@ -342,7 +336,7 @@ export default async function FinanceiroClientPage({
               <input type="hidden" name="paid" value={(!b.paid).toString()} />
               <SubmitButton
                 pendingLabel="Salvando..."
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#065F46] text-white hover:bg-[#047857] transition-colors"
+                className="text-xs font-semibold px-4 py-1.5 rounded-full bg-[#065F46] text-white hover:bg-[#047857] transition-colors min-h-10"
               >
                 {b.paid ? "Desfazer baixa" : "Dar baixa"}
               </SubmitButton>
@@ -359,8 +353,8 @@ export default async function FinanceiroClientPage({
             </form>
           </div>
 
-          <div className="rounded-xl bg-[#F9FBF8] border border-[#E4E4E7] p-4">
-            <p className="text-[11px] uppercase tracking-[0.1em] font-semibold text-[#52525B] mb-3">
+          <div className="rounded-2xl bg-[#F6F8F5] p-4">
+            <p className="text-xs font-semibold text-[#71717A] mb-3">
               Anexos e pagamento
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -397,11 +391,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.xml"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -446,11 +440,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -477,7 +471,7 @@ export default async function FinanceiroClientPage({
                 </div>
                 <SubmitButton
                   pendingLabel="Salvando..."
-                  className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  className="text-xs font-semibold px-4 py-2 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                 >
                   Salvar
                 </SubmitButton>
@@ -502,98 +496,130 @@ export default async function FinanceiroClientPage({
     );
   }
 
-  const initial = client.name.trim().charAt(0).toUpperCase() || "?";
+  // Faixa de meses: um chip por referência, na ordem do tempo. Quando o mês tem
+  // mensalidade + repasse Meta, vale o estado que mais pede ação.
+  const monthKeys = [...new Set(billings.map((b) => b.due_date.slice(0, 7)))].sort();
+  const cycleState = (b: FinancialBillingRow): "overdue" | "pending" | "future" | "paid" =>
+    b.paid ? "paid" : isOverdue(b, todayIso) ? "overdue" : isFuture(b, todayIso) ? "future" : "pending";
+  const STATE_RANK = ["overdue", "pending", "future", "paid"] as const;
+  const STATE_TONE: Record<(typeof STATE_RANK)[number], Tone> = {
+    overdue: "overdue",
+    pending: "pending",
+    future: "neutral",
+    paid: "paid",
+  };
+  const STATE_HINT: Record<(typeof STATE_RANK)[number], string> = {
+    overdue: "Atrasada",
+    pending: "Pendente",
+    future: "Futura",
+    paid: "Paga",
+  };
+  const monthShort = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+
+  const cycleTabs: CycleTab[] = monthKeys.map((key) => {
+    const rows = billings.filter((b) => b.due_date.slice(0, 7) === key);
+    const states = rows.map(cycleState);
+    const worst = STATE_RANK.find((st) => states.includes(st)) ?? "paid";
+    return {
+      key,
+      label: capitalize(monthShort.format(new Date(`${key}-01T00:00:00`)).replace(".", "")),
+      tone: STATE_TONE[worst],
+      hint: STATE_HINT[worst],
+    };
+  });
+
+  const cyclePanels: Record<string, React.ReactNode> = {};
+  for (const key of monthKeys) {
+    cyclePanels[key] = (
+      <div className="flex flex-col gap-3">
+        {billings.filter((b) => b.due_date.slice(0, 7) === key).map(billingCard)}
+      </div>
+    );
+  }
+
+  // Mês aberto de início: o da URL (?ref=2026-10), senão o ciclo atual, senão
+  // a pendência mais antiga, senão o último gerado.
+  const currentKey = todayIso.slice(0, 7);
+  const firstUnpaidKey = cycleTabs.find((t) => t.tone !== "paid")?.key;
+  const initialCycle =
+    ref && monthKeys.includes(ref)
+      ? ref
+      : monthKeys.includes(currentKey)
+        ? currentKey
+        : (firstUnpaidKey ?? monthKeys[monthKeys.length - 1] ?? "");
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#F9FBF8] py-12 sm:py-16 px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(6,95,70,0.06),transparent_55%)]" />
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        back={{ href: "/financeiro", label: "Voltar para A receber" }}
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            {client.name}
+            {client.canceled_at && (
+              <span className="rounded-full bg-[#F4F4F5] px-2.5 py-0.5 text-xs font-semibold text-[#71717A]">
+                Cancelado
+              </span>
+            )}
+          </span>
+        }
+        subtitle={
+          <span className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {client.cnpj && <span>CNPJ {client.cnpj}</span>}
+            {client.email && <span className="break-all">{client.email}</span>}
+            {client.segment && <span>{client.segment}</span>}
+          </span>
+        }
+      />
 
-      <div className="relative max-w-3xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <Link
-            href="/financeiro"
-            className="text-xs text-[#71717A] hover:text-[#18181B] transition-colors"
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {methodTags.map((t) => (
+          <span
+            key={t.key}
+            className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${t.key === "meta" ? "bg-[#F5F3FF] text-[#6D28D9]" : "bg-[#ECFDF5] text-[#065F46]"}`}
           >
-            ← Financeiro
-          </Link>
-          <LogoutButton />
-        </div>
+            {t.label}
+          </span>
+        ))}
+      </div>
 
-        <div className="flex items-start justify-between gap-4 mt-4 mb-1">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#065F46] text-white text-lg font-bold">
-              {initial}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#065F46] mb-1">
-                Virtent
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B] truncate">
-                  {client.name}
-                </h1>
-                {client.canceled_at && (
-                  <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#71717A]">
-                    Cancelado
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-                {client.cnpj && <p className="text-xs text-[#A1A1AA]">CNPJ {client.cnpj}</p>}
-                {client.email && <p className="text-xs text-[#A1A1AA]">{client.email}</p>}
-                {client.segment && <p className="text-xs text-[#A1A1AA]">{client.segment}</p>}
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                {methodTags.map((t) => (
-                  <span
-                    key={t.key}
-                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.key === "meta" ? "bg-[#F5F3FF] text-[#6D28D9]" : "bg-[#ECFDF5] text-[#065F46]"}`}
-                  >
-                    {t.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            <form action={setClientCanceledAction}>
-              <input type="hidden" name="id" value={client.id} />
-              <input type="hidden" name="canceled" value={(!client.canceled_at).toString()} />
-              <ConfirmButton
-                confirmText={
-                  client.canceled_at
-                    ? `Reativar "${client.name}"? A geração automática de mensalidade volta a valer a partir de agora.`
-                    : `Cancelar "${client.name}"? Para de gerar mensalidade nova (automática ou manual), mas o histórico e o que já está em aberto continuam intactos.`
-                }
-                className="text-xs font-medium text-[#71717A] hover:text-[#18181B] transition-colors"
-              >
-                {client.canceled_at ? "Reativar cliente" : "Cancelar cliente"}
-              </ConfirmButton>
-            </form>
-            <form action={deleteClientAction}>
-              <input type="hidden" name="id" value={client.id} />
-              <ConfirmButton
-                confirmText={`Excluir "${client.name}" e todas as cobranças associadas? Essa ação não pode ser desfeita.`}
-                className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
-              >
-                Excluir cliente
-              </ConfirmButton>
-            </form>
-          </div>
-        </div>
+      <div className="mb-5 flex flex-wrap items-center gap-x-5">
+        <form action={setClientCanceledAction}>
+          <input type="hidden" name="id" value={client.id} />
+          <input type="hidden" name="canceled" value={(!client.canceled_at).toString()} />
+          <ConfirmButton
+            confirmText={
+              client.canceled_at
+                ? `Reativar "${client.name}"? A geração automática de mensalidade volta a valer a partir de agora.`
+                : `Cancelar "${client.name}"? Para de gerar mensalidade nova (automática ou manual), mas o histórico e o que já está em aberto continuam intactos.`
+            }
+            className="min-h-10 text-sm font-medium text-[#71717A] transition-colors hover:text-[#18181B]"
+          >
+            {client.canceled_at ? "Reativar cliente" : "Cancelar cliente"}
+          </ConfirmButton>
+        </form>
+        <form action={deleteClientAction}>
+          <input type="hidden" name="id" value={client.id} />
+          <ConfirmButton
+            confirmText={`Excluir "${client.name}" e todas as cobranças associadas? Essa ação não pode ser desfeita.`}
+            className="min-h-10 text-sm font-medium text-[#B91C1C] transition-colors hover:text-[#991B1B]"
+          >
+            Excluir cliente
+          </ConfirmButton>
+        </form>
+      </div>
 
         <EditClientForm client={client} segmentSuggestions={segmentSuggestions} />
 
         {/* Implantação */}
         <details
           open={!client.setup_paid}
-          className="group rounded-2xl border border-[#E4E4E7] bg-white mt-8 shadow-sm overflow-hidden"
+          className="group rounded-3xl bg-white shadow-card mt-8 overflow-hidden"
         >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 sm:p-8 select-none hover:bg-[#F9FBF8] transition-colors">
             <div className="flex items-center gap-3 min-w-0">
               <ChevronIcon />
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B] mb-1">
+                <p className="text-[15px] font-bold tracking-tight text-[#18181B] mb-1">
                   Implantação
                 </p>
                 <p className="text-lg font-bold text-[#18181B] tabular-nums">
@@ -621,14 +647,14 @@ export default async function FinanceiroClientPage({
               <input type="hidden" name="paid" value={(!client.setup_paid).toString()} />
               <SubmitButton
                 pendingLabel="Salvando..."
-                className="text-sm font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                className="text-sm font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
               >
                 {client.setup_paid ? "Desfazer baixa" : "Dar baixa"}
               </SubmitButton>
             </form>
 
-          <div className="mt-4 rounded-xl bg-[#F9FBF8] border border-[#E4E4E7] p-4">
-            <p className="text-[11px] uppercase tracking-[0.1em] font-semibold text-[#52525B] mb-3">
+          <div className="mt-4 rounded-2xl bg-[#F6F8F5] p-4">
+            <p className="text-xs font-semibold text-[#71717A] mb-3">
               Anexos e pagamento
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -667,11 +693,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.xml"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -714,11 +740,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-lg file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer"
+                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -744,7 +770,7 @@ export default async function FinanceiroClientPage({
                 </div>
                 <SubmitButton
                   pendingLabel="Salvando..."
-                  className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  className="text-xs font-semibold px-4 py-2 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                 >
                   Salvar
                 </SubmitButton>
@@ -768,9 +794,9 @@ export default async function FinanceiroClientPage({
         </details>
 
         {/* Cobranças mensais */}
-        <section className="rounded-2xl border border-[#E4E4E7] bg-white p-6 sm:p-8 mt-6 shadow-sm">
+        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <p className="text-xs uppercase tracking-[0.18em] font-semibold text-[#52525B]">
+            <p className="text-[15px] font-bold tracking-tight text-[#18181B]">
               Cobranças mensais
             </p>
             {client.canceled_at ? (
@@ -784,7 +810,7 @@ export default async function FinanceiroClientPage({
                 <input type="hidden" name="clientId" value={client.id} />
                 <button
                   type="submit"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors"
+                  className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
                 >
                   Gerar {cycleLabel(nextCycleDate)}
                 </button>
@@ -811,28 +837,28 @@ export default async function FinanceiroClientPage({
                 {formatFee(client.meta_fee_per_dispatch)} por contato disparado.
               </p>
             )}
-            <p>Clique numa referência pra ver ou esconder os detalhes.</p>
+            <p>Escolha o mês abaixo pra ver ou editar aquela cobrança.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            <div className="rounded-xl border border-[#E4E4E7] px-4 py-3">
+          <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-2xl bg-[#F6F8F5] px-3 py-3 sm:px-4">
               <p className="text-[11px] font-semibold text-[#52525B] mb-1">Em aberto</p>
-              <p className="text-base font-bold text-[#18181B] tabular-nums">{currency.format(openTotal)}</p>
+              <p className="text-[13px] font-bold sm:text-base text-[#18181B] tabular-nums">{currency.format(openTotal)}</p>
               <p className="text-[11px] text-[#A1A1AA]">
                 {openBillings.length} cobrança{openBillings.length === 1 ? "" : "s"}
               </p>
             </div>
-            <div className="rounded-xl border border-[#E4E4E7] px-4 py-3">
+            <div className="rounded-2xl bg-[#F6F8F5] px-3 py-3 sm:px-4">
               <p className="text-[11px] font-semibold text-[#52525B] mb-1">Atrasadas</p>
               <p
-                className={`text-base font-bold tabular-nums ${overdueBillings.length > 0 ? "text-[#B91C1C]" : "text-[#18181B]"}`}
+                className={`text-[13px] font-bold sm:text-base tabular-nums ${overdueBillings.length > 0 ? "text-[#B91C1C]" : "text-[#18181B]"}`}
               >
                 {overdueBillings.length}
               </p>
             </div>
-            <div className="rounded-xl border border-[#E4E4E7] px-4 py-3">
-              <p className="text-[11px] font-semibold text-[#52525B] mb-1">Recebido (histórico)</p>
-              <p className="text-base font-bold text-[#18181B] tabular-nums">
+            <div className="rounded-2xl bg-[#F6F8F5] px-3 py-3 sm:px-4">
+              <p className="text-[11px] font-semibold text-[#52525B] mb-1">Recebido</p>
+              <p className="text-[13px] font-bold sm:text-base text-[#18181B] tabular-nums">
                 {currency.format(receivedTotal)}
               </p>
               <p className="text-[11px] text-[#A1A1AA]">
@@ -841,19 +867,8 @@ export default async function FinanceiroClientPage({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">{visibleBillings.map(billingCard)}</div>
-
-          {historicalBillings.length > 0 && (
-            <details className="group mt-4">
-              <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors">
-                <ChevronIcon />
-                Ver histórico ({historicalBillings.length})
-              </summary>
-              <div className="flex flex-col gap-3 mt-3">{historicalBillings.map(billingCard)}</div>
-            </details>
-          )}
+          <CycleSwitcher tabs={cycleTabs} initial={initialCycle} panels={cyclePanels} />
         </section>
-      </div>
-    </main>
+    </div>
   );
 }
