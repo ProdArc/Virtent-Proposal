@@ -12,14 +12,14 @@ export const btnPrimary =
   "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2";
 
 export const btnSecondary =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-ink ring-1 ring-black/10 transition-[background-color,transform] hover:bg-neutral-bg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-card px-5 text-sm font-semibold text-ink ring-1 ring-line transition-[background-color,transform] hover:bg-neutral-bg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
 
 export const btnGhost =
-  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold text-brand transition-colors hover:bg-brand-light focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
+  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-light focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
 
 /** Campo de texto padrão dos formulários. */
 export const inputClass =
-  "w-full rounded-2xl border border-hairline bg-white px-4 py-2.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
+  "w-full rounded-2xl border border-hairline bg-card px-4 py-2.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
 
 /** Cartão branco flutuando no fundo cinza. */
 export function Panel({
@@ -33,7 +33,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-3xl bg-white shadow-card ${padded ? "p-5 sm:p-6" : ""} ${className}`}
+      className={`rounded-3xl bg-card shadow-card ${padded ? "p-5 sm:p-6" : ""} ${className}`}
     >
       {children}
     </section>
@@ -80,7 +80,7 @@ export function PageHeader({
           <Link
             href={back.href}
             aria-label={back.label}
-            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-ink shadow-card transition-colors hover:bg-neutral-bg active:scale-95"
+            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-ink shadow-card transition-colors hover:bg-neutral-bg active:scale-95"
           >
             <CaretLeft size={20} weight="bold" aria-hidden="true" />
           </Link>
@@ -117,7 +117,7 @@ export function HeroCard({
   const valueClass =
     tone === "overdue" ? "text-overdue-ink" : tone === "paid" ? "text-paid-ink" : "text-ink";
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-white p-5 shadow-card sm:p-7">
+    <section className="relative overflow-hidden rounded-[2rem] bg-card p-5 shadow-card sm:p-7">
       {/* Brilho verde bem suave no canto — dá identidade sem escurecer o tema. */}
       <div
         aria-hidden="true"
@@ -154,8 +154,8 @@ export function QuickAction({
 }) {
   const circle =
     tone === "danger"
-      ? "bg-overdue-bg text-overdue-ink group-hover:bg-[#FBE0E0]"
-      : "bg-brand-light text-brand group-hover:bg-[#D8F2E5]";
+      ? "bg-overdue-bg text-overdue-ink group-hover:bg-overdue-bg-hover"
+      : "bg-brand-light text-brand-ink group-hover:bg-brand-light-hover";
   return (
     <Link href={href} className="group flex w-[4.5rem] flex-col items-center gap-1.5 text-center">
       <span
@@ -163,7 +163,7 @@ export function QuickAction({
       >
         <IconCmp size={24} weight="bold" aria-hidden="true" />
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-overdue-ink px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-overdue-solid px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-card">
             {badge}
           </span>
         )}
@@ -184,7 +184,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-3xl bg-white px-6 py-12 text-center shadow-card">
+    <div className="rounded-3xl bg-card px-6 py-12 text-center shadow-card">
       <p className="text-[15px] font-bold text-ink">{title}</p>
       {description && <p className="mx-auto mt-1 max-w-sm text-sm text-secondary-ink">{description}</p>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
@@ -195,7 +195,7 @@ export function EmptyState({
 /** Erro de configuração (banco indisponível etc.), dentro do shell. */
 export function ConfigError({ message }: { message: string }) {
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-3xl bg-white p-8 text-center shadow-card">
+    <div className="mx-auto mt-16 max-w-md rounded-3xl bg-card p-8 text-center shadow-card">
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-pending-ink">
         Configuração pendente
       </p>

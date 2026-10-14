@@ -4,7 +4,7 @@ import { useState } from "react";
 import { documentKind, formatDocument, formatPhone } from "@/lib/format";
 
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 
 /**
  * Campo com máscara em tempo real. O valor mascarado é o que vai no form —

@@ -89,7 +89,7 @@ export function BalanceChart({ series }: { series: BalancePoint[] }) {
             x2={W - PAD.right}
             y1={zeroY}
             y2={zeroY}
-            stroke="#E4E4E7"
+            className="stroke-border"
             strokeWidth="1"
             strokeDasharray="4 4"
           />
@@ -111,7 +111,8 @@ export function BalanceChart({ series }: { series: BalancePoint[] }) {
             cx={x(i)}
             cy={y(p.balance)}
             r={i === series.length - 1 ? 4 : 2.5}
-            fill={i === series.length - 1 ? "#065F46" : "#1baf7a"}
+            fill="#1baf7a"
+            className={i === series.length - 1 ? "fill-brand-ink" : undefined}
           />
         ))}
       </svg>

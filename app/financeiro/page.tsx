@@ -244,7 +244,7 @@ export default async function FinanceiroPage({
           <div
             role="group"
             aria-label="Modo de exibição"
-            className="inline-flex shrink-0 rounded-full bg-white p-1 shadow-card"
+            className="inline-flex shrink-0 rounded-full bg-card p-1 shadow-card"
           >
             {(
               [
@@ -257,7 +257,7 @@ export default async function FinanceiroPage({
                 href={viewHref(key)}
                 aria-current={view === key ? "true" : undefined}
                 className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
-                  view === key ? "bg-ink text-white" : "text-muted hover:text-ink"
+                  view === key ? "bg-strong text-on-strong" : "text-muted hover:text-ink"
                 }`}
               >
                 <IconCmp size={16} weight="bold" aria-hidden="true" />
@@ -318,7 +318,7 @@ export default async function FinanceiroPage({
                   className="mb-3 shrink-0 self-end text-subtle transition-transform group-open/sec:rotate-180"
                 />
               </summary>
-              <div className="overflow-hidden rounded-3xl bg-white shadow-card">
+              <div className="overflow-hidden rounded-3xl bg-card shadow-card">
                 {items.map(({ client, billings: rows, status: st }) => (
                   <ClientCard
                     key={client.id}

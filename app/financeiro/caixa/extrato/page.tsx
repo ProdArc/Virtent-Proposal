@@ -116,7 +116,7 @@ export default async function ExtratoPage({
           {visible.length > 0 && (
             <a
               href={`/financeiro/caixa/extrato/export?${exportParams.toString()}`}
-              className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+              className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
             >
               Exportar CSV
             </a>
@@ -138,7 +138,7 @@ export default async function ExtratoPage({
             }
           />
         ) : (
-          <div className="rounded-3xl bg-white shadow-card overflow-hidden">
+          <div className="rounded-3xl bg-card shadow-card overflow-hidden">
             {visible.map((m) => {
               const isIn = m.direction === "in";
               const href = sourceHref(m);

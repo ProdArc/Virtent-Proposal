@@ -41,12 +41,12 @@ export function ClientMatrix({
   today: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-card">
+    <div className="overflow-hidden rounded-3xl bg-card shadow-card">
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-white px-4 py-3 text-left text-xs font-medium text-secondary-ink">
+              <th className="sticky left-0 z-10 bg-card px-4 py-3 text-left text-xs font-medium text-secondary-ink">
                 Cliente <span className="font-normal text-subtle">· valores em R$</span>
               </th>
               {months.map((m) => (
@@ -62,11 +62,11 @@ export function ClientMatrix({
               <tr key={client.id} className="group/row">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 max-w-[10.5rem] border-t border-hairline bg-white px-4 py-1.5 text-left font-semibold text-ink group-hover/row:bg-[#F8FAF7] sm:max-w-[16rem]"
+                  className="sticky left-0 z-10 w-[8.75rem] max-w-[8.75rem] border-t border-hairline bg-card px-3 py-1.5 text-left font-semibold text-ink group-hover/row:bg-wash sm:w-auto sm:max-w-[16rem] sm:px-4"
                 >
                   <Link
                     href={`/financeiro/${client.id}`}
-                    className="block truncate py-1 text-[13px] hover:text-brand"
+                    className="line-clamp-3 break-words py-1 text-[12.5px] leading-tight hover:text-brand-ink sm:line-clamp-1 sm:text-[13px]"
                     title={client.name}
                   >
                     {client.name}

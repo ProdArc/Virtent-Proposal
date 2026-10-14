@@ -8,7 +8,7 @@ import { createPayableAction, type FormState } from "../actions";
 const initial: FormState = {};
 
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 const LABEL = "block text-xs font-semibold text-neutral-ink mb-1.5";
 
 /**
@@ -31,7 +31,7 @@ export function NewPayableForm({
   const [mode, setMode] = useState<"single" | "installments" | "recurring">("single");
 
   return (
-    <form action={formAction} className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
+    <form action={formAction} className="rounded-3xl bg-card shadow-card p-6 sm:p-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
         <div>
           <label htmlFor="supplier" className={LABEL}>
@@ -111,7 +111,7 @@ export function NewPayableForm({
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                 mode === opt.key
                   ? "border-brand bg-brand text-white"
-                  : "border-border bg-white text-neutral-ink hover:text-ink"
+                  : "border-border bg-card text-neutral-ink hover:text-ink"
               }`}
             >
               {opt.label}
@@ -174,7 +174,7 @@ export function NewPayableForm({
       </fieldset>
 
       <details className="mb-5 group">
-        <summary className="cursor-pointer list-none text-xs font-semibold text-brand hover:text-brand-hover transition-colors">
+        <summary className="cursor-pointer list-none text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors">
           + Mais opções (descrição, forma de pagamento, origem, observações)
         </summary>
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-5">

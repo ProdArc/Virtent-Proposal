@@ -18,7 +18,7 @@ export function ClientCheckbox({ id, name }: { id: string; name: string }) {
         checked={selected.has(id)}
         onChange={() => toggle(id)}
         aria-label={`Selecionar ${name}`}
-        className="!min-h-0 h-5 w-5 shrink-0 cursor-pointer rounded-md border-border text-brand focus:ring-brand/30"
+        className="!min-h-0 h-5 w-5 shrink-0 cursor-pointer rounded-md border-border text-brand-ink focus:ring-brand/30"
       />
     </label>
   );

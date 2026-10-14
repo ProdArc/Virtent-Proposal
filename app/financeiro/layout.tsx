@@ -1,6 +1,7 @@
 import type { Viewport } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { getSessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/logout/actions";
@@ -8,6 +9,7 @@ import {
   FinanceBottomNav,
   FinanceSidebarNav,
 } from "@/components/financeiro/shell/FinanceNav";
+import { ThemeToggle } from "@/components/financeiro/shell/ThemeToggle";
 
 // viewport-fit=cover deixa o conteúdo ocupar a tela inteira no iPhone com
 // notch; a barra de abas respeita a área segura via env(safe-area-inset-*).
@@ -15,7 +17,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#F0F3EF",
+  // Cor da barra do navegador acompanha o tema do aparelho.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F0F3EF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0C110F" },
+  ],
 };
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -27,13 +33,17 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 export default async function FinanceiroLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
+  // Tema escolhido no botão do topo (cookie fin_theme). Sem escolha, "auto" =
+  // segue o aparelho. O escuro só existe em telas < 1024px (ver globals.css).
+  const saved = (await cookies()).get("fin_theme")?.value;
+  const theme = saved === "dark" || saved === "light" ? saved : "auto";
   const name = user ? capitalize(user) : "";
   const initial = name.charAt(0) || "V";
 
   return (
-    <div className="fin-app min-h-dvh bg-canvas text-ink lg:pl-64">
+    <div data-theme={theme} className="fin-app min-h-dvh bg-canvas text-ink lg:pl-64">
       {/* Desktop */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-hairline bg-white px-4 py-6 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-hairline bg-card px-4 py-6 lg:flex">
         <Link href="/painel" className="flex items-center gap-3 px-2">
           <Image
             src="/images/virtent-logo-icon.png"
@@ -73,7 +83,7 @@ export default async function FinanceiroLayout({ children }: { children: React.R
 
       {/* Celular */}
       <header className="flex items-center justify-between px-4 pb-1 pt-[max(0.875rem,env(safe-area-inset-top))] sm:px-6 lg:hidden">
-        <Link href="/painel" className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
             {initial}
           </span>
@@ -83,16 +93,19 @@ export default async function FinanceiroLayout({ children }: { children: React.R
               {name || "Virtent"}
             </span>
           </span>
-        </Link>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            aria-label="Sair"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-muted shadow-card transition-colors active:bg-neutral-bg"
-          >
-            <SignOut size={20} aria-hidden="true" />
-          </button>
-        </form>
+        </div>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              aria-label="Sair"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-muted shadow-card transition-colors active:bg-neutral-bg"
+            >
+              <SignOut size={20} aria-hidden="true" />
+            </button>
+          </form>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 lg:px-10 lg:pb-14 lg:pt-10">

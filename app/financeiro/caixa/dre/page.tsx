@@ -141,7 +141,7 @@ export default async function DrePage({
       />
 
       {/* Navegação de mês */}
-      <div className="mb-5 flex items-center justify-between gap-2 rounded-full bg-white p-1.5 shadow-card">
+      <div className="mb-5 flex items-center justify-between gap-2 rounded-full bg-card p-1.5 shadow-card">
         <Link
           href={`/financeiro/caixa/dre?month=${prevMonth}`}
           aria-label="Mês anterior"
@@ -164,18 +164,18 @@ export default async function DrePage({
           name="month"
           defaultValue={month}
           aria-label="Escolher mês do DRE"
-          className="min-w-0 flex-1 rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="min-w-0 flex-1 rounded-2xl border-0 bg-card px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         <button
           type="submit"
-          className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-ink ring-1 ring-black/10 transition-colors hover:bg-neutral-bg"
+          className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-card px-5 text-sm font-semibold text-ink ring-1 ring-line transition-colors hover:bg-neutral-bg"
         >
           Ir
         </button>
       </form>
 
         {/* DRE do mês */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mb-6">
           <dl className="space-y-2.5 mb-4">
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-xs text-secondary-ink">Implantações</dt>
@@ -252,7 +252,7 @@ export default async function DrePage({
         </section>
 
         {/* Últimos meses */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mb-6">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-ink">Últimos meses</h2>
             <p className="text-xs text-secondary-ink">Receita, despesa e resultado mês a mês</p>
@@ -308,7 +308,7 @@ export default async function DrePage({
                       <td className="px-2 py-2">
                         <Link
                           href={`/financeiro/caixa/dre?month=${t.key}`}
-                          className="font-medium text-ink hover:text-brand transition-colors"
+                          className="font-medium text-ink hover:text-brand-ink transition-colors"
                         >
                           {capitalize(monthShortFmt.format(new Date(`${t.key}-01T00:00:00`)))}
                         </Link>

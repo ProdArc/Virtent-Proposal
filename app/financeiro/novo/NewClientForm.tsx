@@ -32,10 +32,10 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
   }
 
   return (
-    <form action={formAction} className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
+    <form action={formAction} className="rounded-3xl bg-card shadow-card p-6 sm:p-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
         <div className="sm:col-span-2">
-          <label htmlFor="name" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="name" className="block text-xs font-semibold text-muted mb-1.5">
             Nome da empresa
           </label>
           <input
@@ -44,19 +44,19 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
             type="text"
             required
             placeholder="Cartão de TODOS - Campinas Sudoeste"
-            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+            className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
         </div>
 
         <div>
-          <label htmlFor="cnpj" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="cnpj" className="block text-xs font-semibold text-muted mb-1.5">
             CNPJ
           </label>
           <CnpjInput id="cnpj" name="cnpj" />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="email" className="block text-xs font-semibold text-muted mb-1.5">
             E-mail(s) da unidade
           </label>
           <input
@@ -65,13 +65,13 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
             type="email"
             multiple
             placeholder="unidade@exemplo.com, financeiro@exemplo.com"
-            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+            className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
-          <p className="mt-1 text-[11px] text-[#A1A1AA]">Separe vários e-mails por vírgula.</p>
+          <p className="mt-1 text-[11px] text-subtle">Separe vários e-mails por vírgula.</p>
         </div>
 
         <div>
-          <label htmlFor="segment" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="segment" className="block text-xs font-semibold text-muted mb-1.5">
             Segmento
           </label>
           <input
@@ -80,7 +80,7 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
             type="text"
             list="segment-suggestions"
             placeholder="Ex: Franquia, Academia, Clínica..."
-            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+            className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
           <datalist id="segment-suggestions">
             {segmentSuggestions.map((s) => (
@@ -90,21 +90,21 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
         </div>
 
         <div>
-          <label htmlFor="setupValue" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="setupValue" className="block text-xs font-semibold text-muted mb-1.5">
             Valor de implantação
           </label>
           <CurrencyInput id="setupValue" name="setupValue" required />
         </div>
 
         <div>
-          <label htmlFor="setupDueDate" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="setupDueDate" className="block text-xs font-semibold text-muted mb-1.5">
             Vencimento da implantação
           </label>
           <input
             id="setupDueDate"
             name="setupDueDate"
             type="date"
-            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+            className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
         </div>
 
@@ -119,11 +119,11 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
             metaFirstBillingDate: null,
           }}
           metaDateHint="Vazio = junto com a 1ª mensalidade."
-          inputClassName="w-full rounded-lg border border-[#E4E4E7] px-3 py-2 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+          inputClassName="w-full rounded-lg border border-border px-3 py-2 text-sm text-ink bg-card focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
         />
 
         <div>
-          <label htmlFor="dueDay" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="dueDay" className="block text-xs font-semibold text-muted mb-1.5">
             Dia de vencimento das cobranças
           </label>
           <select
@@ -132,7 +132,7 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
             required
             value={dueDay}
             onChange={(e) => handleDueDayChange(Number(e.target.value))}
-            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] bg-white focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+            className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink bg-card focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           >
             {DUE_DAYS.map((day) => (
               <option key={day} value={day}>
@@ -143,7 +143,7 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
         </div>
 
         <div>
-          <label htmlFor="firstBillingDate" className="block text-xs font-semibold text-[#52525B] mb-1.5">
+          <label htmlFor="firstBillingDate" className="block text-xs font-semibold text-muted mb-1.5">
             Primeiro vencimento da mensalidade
           </label>
           <input
@@ -156,9 +156,9 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
               setFirstBillingTouched(true);
               setFirstBillingDate(e.target.value);
             }}
-            className="w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+            className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
-          <p className="text-[11px] text-[#A1A1AA] mt-1">
+          <p className="text-[11px] text-subtle mt-1">
             Pós-pago: normalmente 1 mês após o cadastro, não o mês corrente.
           </p>
         </div>
@@ -166,7 +166,7 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
       </div>
 
       {state.error && (
-        <p className="text-sm text-[#B45309] bg-[#FFF7ED] border border-[#FDBA74]/40 rounded-lg px-3 py-2 mb-4">
+        <p className="text-sm text-pending-ink bg-pending-bg border border-pending-line/40 rounded-lg px-3 py-2 mb-4">
           {state.error}
         </p>
       )}
@@ -174,7 +174,7 @@ export function NewClientForm({ segmentSuggestions }: { segmentSuggestions: stri
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex items-center justify-center text-sm font-semibold px-5 py-2.5 rounded-full bg-[#065F46] text-white hover:bg-[#047857] disabled:opacity-60 disabled:cursor-not-allowed transition-colors min-h-10"
+        className="inline-flex items-center justify-center text-sm font-semibold px-5 py-2.5 rounded-full bg-brand text-white hover:bg-brand-hover disabled:opacity-60 disabled:cursor-not-allowed transition-colors min-h-10"
       >
         {pending ? "Criando..." : "Criar cliente"}
       </button>

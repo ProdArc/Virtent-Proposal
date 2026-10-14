@@ -250,8 +250,8 @@ export default async function DashboardPage({
         value={currency.format(grandTotal)}
         hint={
           <>
-            <strong className="font-semibold text-[#52525B]">{statusLabel}</strong> de{" "}
-            <strong className="font-semibold text-[#52525B]">{scopeLabel}</strong>
+            <strong className="font-semibold text-muted">{statusLabel}</strong> de{" "}
+            <strong className="font-semibold text-muted">{scopeLabel}</strong>
             {passThroughTotal > 0 && (
               <>
                 {" · "}+ {currency.format(passThroughTotal)} de repasse Meta (fora do faturamento)
@@ -261,7 +261,7 @@ export default async function DashboardPage({
         }
       />
 
-      <div className="mb-3 mt-4 grid grid-cols-1 gap-3 rounded-3xl bg-white p-4 shadow-card sm:grid-cols-3">
+      <div className="mb-3 mt-4 grid grid-cols-1 gap-3 rounded-3xl bg-card p-4 shadow-card sm:grid-cols-3">
         <FilterSelect
           name="month"
           label="Mês de referência"
@@ -284,47 +284,47 @@ export default async function DashboardPage({
           basePath="/financeiro/dashboard"
         />
       </div>
-      <p className="mb-5 px-1 text-xs text-[#A1A1AA]">
+      <p className="mb-5 px-1 text-xs text-subtle">
         A implantação entra no mês do seu vencimento; a mensalidade, no mês da referência.
       </p>
 
       {/* Índices macro */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-3xl bg-white px-5 py-4 shadow-card">
-          <p className="mb-1 text-xs font-medium text-[#71717A]">
+        <div className="rounded-3xl bg-card px-5 py-4 shadow-card">
+          <p className="mb-1 text-xs font-medium text-secondary-ink">
             {activeMonth ? "Clientes que entraram" : "Clientes"}
           </p>
-          <p className="text-xl font-extrabold tracking-tight text-[#18181B] tabular-nums">
+          <p className="text-xl font-extrabold tracking-tight text-ink tabular-nums">
             {enteredClients.length}
           </p>
-          <p className="text-[11.5px] text-[#A1A1AA]">
+          <p className="text-[11.5px] text-subtle">
             {activeMonth ? monthLabel(activeMonth, monthShortFmt) : "no total"}
           </p>
         </div>
-        <div className="rounded-3xl bg-white px-5 py-4 shadow-card">
-          <p className="mb-1 text-xs font-medium text-[#71717A]">
+        <div className="rounded-3xl bg-card px-5 py-4 shadow-card">
+          <p className="mb-1 text-xs font-medium text-secondary-ink">
             <span
               className="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle"
               style={{ backgroundColor: SERIES_SETUP }}
             />
             Implantação
           </p>
-          <p className="text-xl font-extrabold tracking-tight text-[#18181B] tabular-nums">
+          <p className="text-xl font-extrabold tracking-tight text-ink tabular-nums">
             {currency.format(setupTotal)}
           </p>
         </div>
-        <div className="col-span-2 rounded-3xl bg-white px-5 py-4 shadow-card sm:col-span-1">
-          <p className="mb-1 text-xs font-medium text-[#71717A]">
+        <div className="col-span-2 rounded-3xl bg-card px-5 py-4 shadow-card sm:col-span-1">
+          <p className="mb-1 text-xs font-medium text-secondary-ink">
             <span
               className="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle"
               style={{ backgroundColor: SERIES_MONTHLY }}
             />
             Mensalidades
           </p>
-          <p className="text-xl font-extrabold tracking-tight text-[#18181B] tabular-nums">
+          <p className="text-xl font-extrabold tracking-tight text-ink tabular-nums">
             {currency.format(monthlyTotal)}
           </p>
-          <p className="text-[11.5px] text-[#A1A1AA]">
+          <p className="text-[11.5px] text-subtle">
             inclui {currency.format(commissionTotal)} de comissão
             {metaFeeTotal > 0 && <> e {currency.format(metaFeeTotal)} de adicional por disparo</>}
           </p>
@@ -338,31 +338,31 @@ export default async function DashboardPage({
         )}
 
         {/* Evolução mensal */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mb-6">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
             <div>
-              <h2 className="text-sm font-bold text-[#18181B]">Faturamento por mês</h2>
-              <p className="text-xs text-[#A1A1AA]">
+              <h2 className="text-sm font-bold text-ink">Faturamento por mês</h2>
+              <p className="text-xs text-subtle">
                 Todos os meses{activeMonth ? " — o mês filtrado aparece destacado" : ""}
               </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: SERIES_SETUP }} />
-                <span className="text-xs text-[#52525B]">Implantação</span>
+                <span className="text-xs text-muted">Implantação</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
                   className="h-2.5 w-2.5 rounded-sm"
                   style={{ backgroundColor: SERIES_MONTHLY }}
                 />
-                <span className="text-xs text-[#52525B]">Mensalidades</span>
+                <span className="text-xs text-muted">Mensalidades</span>
               </div>
             </div>
           </div>
 
           {months.length === 0 ? (
-            <p className="text-sm text-[#71717A]">Nenhum faturamento no filtro selecionado.</p>
+            <p className="text-sm text-secondary-ink">Nenhum faturamento no filtro selecionado.</p>
           ) : (
             <>
               {/* pt-20/px-12 dão folga pro tooltip caber dentro da área rolável. */}
@@ -382,7 +382,7 @@ export default async function DashboardPage({
                           className="flex w-full flex-col justify-end"
                           style={{ height: PLOT_HEIGHT_PX }}
                         >
-                          <span className="mb-1 text-center text-[10px] font-semibold text-[#52525B] tabular-nums">
+                          <span className="mb-1 text-center text-[10px] font-semibold text-muted tabular-nums">
                             {compactCurrency.format(m.total)}
                           </span>
                           {monthlyPx > 0.5 && (
@@ -404,19 +404,19 @@ export default async function DashboardPage({
                         </div>
 
                         <p
-                          className={`mt-2 text-[10px] whitespace-nowrap ${m.key === activeMonth ? "font-bold text-[#18181B]" : "text-[#71717A]"}`}
+                          className={`mt-2 text-[10px] whitespace-nowrap ${m.key === activeMonth ? "font-bold text-ink" : "text-secondary-ink"}`}
                         >
                           {monthLabel(m.key, monthShortFmt)}
                         </p>
 
-                        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#18181B] px-3 py-2 text-left shadow-lg group-hover:block">
-                          <p className="text-[11px] font-semibold text-white mb-1">
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-strong px-3 py-2 text-left shadow-lg group-hover:block">
+                          <p className="text-[11px] font-semibold text-on-strong mb-1">
                             {monthLabel(m.key, monthLongFmt)}
                           </p>
-                          <p className="text-[11px] text-[#D4D4D8] tabular-nums">
+                          <p className="text-[11px] text-on-strong-soft tabular-nums">
                             Implantação: {currency.format(m.setup)}
                           </p>
-                          <p className="text-[11px] text-[#D4D4D8] tabular-nums">
+                          <p className="text-[11px] text-on-strong-soft tabular-nums">
                             Mensalidades: {currency.format(m.monthly)}
                           </p>
                         </div>
@@ -427,11 +427,11 @@ export default async function DashboardPage({
               </div>
 
               <details className="group mt-5">
-                <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors">
                   <svg
                     viewBox="0 0 20 20"
                     fill="none"
-                    className="h-4 w-4 shrink-0 text-[#A1A1AA] transition-transform duration-200 group-open:rotate-90"
+                    className="h-4 w-4 shrink-0 text-subtle transition-transform duration-200 group-open:rotate-90"
                   >
                     <path
                       d="M7 4l6 6-6 6"
@@ -446,34 +446,34 @@ export default async function DashboardPage({
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[#E4E4E7]">
-                        <th className="py-2 pr-4 text-left text-[11px] font-semibold text-[#52525B]">
+                      <tr className="border-b border-border">
+                        <th className="py-2 pr-4 text-left text-[11px] font-semibold text-muted">
                           Mês
                         </th>
-                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
+                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
                           Implantação
                         </th>
-                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
+                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
                           Mensalidades
                         </th>
-                        <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#52525B]">
+                        <th className="py-2 pl-4 text-right text-[11px] font-semibold text-muted">
                           Total
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {months.map((m) => (
-                        <tr key={m.key} className="border-b border-[#F4F4F5] last:border-b-0">
-                          <td className="py-2 pr-4 text-[#18181B]">
+                        <tr key={m.key} className="border-b border-neutral-bg last:border-b-0">
+                          <td className="py-2 pr-4 text-ink">
                             {monthLabel(m.key, monthLongFmt)}
                           </td>
-                          <td className="py-2 px-4 text-right text-[#52525B] tabular-nums">
+                          <td className="py-2 px-4 text-right text-muted tabular-nums">
                             {currency.format(m.setup)}
                           </td>
-                          <td className="py-2 px-4 text-right text-[#52525B] tabular-nums">
+                          <td className="py-2 px-4 text-right text-muted tabular-nums">
                             {currency.format(m.monthly)}
                           </td>
-                          <td className="py-2 pl-4 text-right font-semibold text-[#18181B] tabular-nums">
+                          <td className="py-2 pl-4 text-right font-semibold text-ink tabular-nums">
                             {currency.format(m.total)}
                           </td>
                         </tr>
@@ -487,17 +487,17 @@ export default async function DashboardPage({
         </section>
 
         {/* Faturamento por cliente */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8">
           <div className="mb-5">
-            <h2 className="text-sm font-bold text-[#18181B]">Faturamento por cliente</h2>
-            <p className="text-xs text-[#A1A1AA]">
+            <h2 className="text-sm font-bold text-ink">Faturamento por cliente</h2>
+            <p className="text-xs text-subtle">
               {scopeLabel === "todo o período" ? "Todo o período" : scopeLabel} · implantação e
               mensalidades separadas
             </p>
           </div>
 
           {clientRows.length === 0 ? (
-            <p className="text-sm text-[#71717A]">Nenhum faturamento no filtro selecionado.</p>
+            <p className="text-sm text-secondary-ink">Nenhum faturamento no filtro selecionado.</p>
           ) : (
             <>
             <ul className="divide-y divide-hairline md:hidden">
@@ -508,10 +508,10 @@ export default async function DashboardPage({
                     className="flex items-start justify-between gap-3 py-3.5"
                   >
                     <span className="min-w-0">
-                      <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-[#18181B]">
+                      <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink">
                         {r.name}
                       </span>
-                      <span className="mt-0.5 block text-xs text-[#71717A]">
+                      <span className="mt-0.5 block text-xs text-secondary-ink">
                         {[
                           r.setup > 0 && `Implantação ${currency.format(r.setup)}`,
                           r.monthly > 0 && `Mensalidade ${currency.format(r.monthly)}`,
@@ -521,11 +521,11 @@ export default async function DashboardPage({
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block text-[15px] font-bold tabular-nums text-[#18181B]">
+                      <span className="block text-[15px] font-bold tabular-nums text-ink">
                         {currency.format(r.total)}
                       </span>
                       {r.passThrough > 0 && (
-                        <span className="block text-[11px] text-[#A1A1AA] tabular-nums">
+                        <span className="block text-[11px] text-subtle tabular-nums">
                           + {currency.format(r.passThrough)} Meta
                         </span>
                       )}
@@ -534,10 +534,10 @@ export default async function DashboardPage({
                 </li>
               ))}
               <li className="flex items-center justify-between gap-3 py-3.5">
-                <span className="text-xs font-semibold text-[#71717A]">
+                <span className="text-xs font-semibold text-secondary-ink">
                   Total ({clientRows.length} cliente{clientRows.length === 1 ? "" : "s"})
                 </span>
-                <span className="text-base font-extrabold tabular-nums text-[#18181B]">
+                <span className="text-base font-extrabold tabular-nums text-ink">
                   {currency.format(grandTotal)}
                 </span>
               </li>
@@ -545,21 +545,21 @@ export default async function DashboardPage({
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#E4E4E7]">
-                    <th className="py-2 pr-4 text-left text-[11px] font-semibold text-[#52525B]">
+                  <tr className="border-b border-border">
+                    <th className="py-2 pr-4 text-left text-[11px] font-semibold text-muted">
                       Cliente
                     </th>
-                    <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
+                    <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
                       Implantação
                     </th>
-                    <th className="py-2 px-4 text-right text-[11px] font-semibold text-[#52525B]">
+                    <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
                       Mensalidades
                     </th>
-                    <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#52525B]">
+                    <th className="py-2 pl-4 text-right text-[11px] font-semibold text-muted">
                       Total
                     </th>
                     {passThroughTotal > 0 && (
-                      <th className="py-2 pl-4 text-right text-[11px] font-semibold text-[#A1A1AA]">
+                      <th className="py-2 pl-4 text-right text-[11px] font-semibold text-subtle">
                         Repasse Meta
                       </th>
                     )}
@@ -569,27 +569,27 @@ export default async function DashboardPage({
                   {clientRows.map((r) => (
                     <tr
                       key={r.id}
-                      className="border-b border-[#F4F4F5] last:border-b-0 hover:bg-[#F9FBF8] transition-colors"
+                      className="border-b border-neutral-bg last:border-b-0 hover:bg-surface transition-colors"
                     >
                       <td className="py-2.5 pr-4">
                         <Link
                           href={`/financeiro/${r.id}`}
-                          className="text-[#18181B] hover:text-[#065F46] font-medium transition-colors"
+                          className="text-ink hover:text-brand-ink font-medium transition-colors"
                         >
                           {r.name}
                         </Link>
                       </td>
-                      <td className="py-2.5 px-4 text-right text-[#52525B] tabular-nums">
+                      <td className="py-2.5 px-4 text-right text-muted tabular-nums">
                         {r.setup > 0 ? currency.format(r.setup) : "—"}
                       </td>
-                      <td className="py-2.5 px-4 text-right text-[#52525B] tabular-nums">
+                      <td className="py-2.5 px-4 text-right text-muted tabular-nums">
                         {r.monthly > 0 ? currency.format(r.monthly) : "—"}
                       </td>
-                      <td className="py-2.5 pl-4 text-right font-semibold text-[#18181B] tabular-nums">
+                      <td className="py-2.5 pl-4 text-right font-semibold text-ink tabular-nums">
                         {currency.format(r.total)}
                       </td>
                       {passThroughTotal > 0 && (
-                        <td className="py-2.5 pl-4 text-right text-[#A1A1AA] tabular-nums">
+                        <td className="py-2.5 pl-4 text-right text-subtle tabular-nums">
                           {r.passThrough > 0 ? currency.format(r.passThrough) : "—"}
                         </td>
                       )}
@@ -597,21 +597,21 @@ export default async function DashboardPage({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-[#E4E4E7]">
-                    <td className="py-2.5 pr-4 text-[11px] font-semibold text-[#52525B]">
+                  <tr className="border-t-2 border-border">
+                    <td className="py-2.5 pr-4 text-[11px] font-semibold text-muted">
                       Total ({clientRows.length} cliente{clientRows.length === 1 ? "" : "s"})
                     </td>
-                    <td className="py-2.5 px-4 text-right font-semibold text-[#18181B] tabular-nums">
+                    <td className="py-2.5 px-4 text-right font-semibold text-ink tabular-nums">
                       {currency.format(setupTotal)}
                     </td>
-                    <td className="py-2.5 px-4 text-right font-semibold text-[#18181B] tabular-nums">
+                    <td className="py-2.5 px-4 text-right font-semibold text-ink tabular-nums">
                       {currency.format(monthlyTotal)}
                     </td>
-                    <td className="py-2.5 pl-4 text-right font-extrabold text-[#18181B] tabular-nums">
+                    <td className="py-2.5 pl-4 text-right font-extrabold text-ink tabular-nums">
                       {currency.format(grandTotal)}
                     </td>
                     {passThroughTotal > 0 && (
-                      <td className="py-2.5 pl-4 text-right font-semibold text-[#A1A1AA] tabular-nums">
+                      <td className="py-2.5 pl-4 text-right font-semibold text-subtle tabular-nums">
                         {currency.format(passThroughTotal)}
                       </td>
                     )}

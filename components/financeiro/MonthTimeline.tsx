@@ -15,10 +15,10 @@ const MONTH_ABBR = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
  * "atrasada" ganha um halo e "a vencer" é vazado em vez de sólido.
  */
 const CELL_CLASS: Record<BillingState, string> = {
-  paid: "bg-paid-ink text-white",
-  overdue: "bg-overdue-ink text-white ring-2 ring-overdue-line",
-  pending: "bg-pending-ink text-white",
-  future: "bg-white text-neutral-ink border border-neutral-line",
+  paid: "bg-paid-solid text-white",
+  overdue: "bg-overdue-solid text-white ring-2 ring-overdue-line",
+  pending: "bg-pending-solid text-white",
+  future: "bg-card text-neutral-ink border border-neutral-line",
 };
 
 // Mês com mensalidade + repasse Meta vira UM quadrado: vale o estado que
@@ -78,7 +78,7 @@ export function MonthTimeline({
               <span
                 aria-hidden="true"
                 title=""
-                className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-white bg-brand"
+                className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-card bg-brand"
               />
             )}
           </>
@@ -120,7 +120,7 @@ export function MonthTimelineLegend() {
         </span>
       ))}
       <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="h-2 w-2 rounded-full border border-white bg-brand" />
+        <span aria-hidden="true" className="h-2 w-2 rounded-full border border-card bg-brand" />
         <span className="text-[10.5px] text-secondary-ink">Cobrança enviada</span>
       </span>
     </div>

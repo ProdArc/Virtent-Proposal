@@ -22,11 +22,11 @@ const IDLE: Record<Tone, string> = {
 };
 
 const SELECTED: Record<Tone, string> = {
-  paid: "bg-paid-ink text-white shadow-card",
-  pending: "bg-pending-ink text-white shadow-card",
-  overdue: "bg-overdue-ink text-white shadow-card",
-  onboarding: "bg-onboarding-ink text-white shadow-card",
-  neutral: "bg-ink text-white shadow-card",
+  paid: "bg-paid-solid text-white shadow-card",
+  pending: "bg-pending-solid text-white shadow-card",
+  overdue: "bg-overdue-solid text-white shadow-card",
+  onboarding: "bg-onboarding-solid text-white shadow-card",
+  neutral: "bg-strong text-on-strong shadow-card",
 };
 
 /**
@@ -59,7 +59,7 @@ export function CycleSwitcher({
   }, [selected]);
 
   if (tabs.length === 0) {
-    return <p className="text-sm text-[#71717A]">Nenhuma referência gerada ainda.</p>;
+    return <p className="text-sm text-secondary-ink">Nenhuma referência gerada ainda.</p>;
   }
 
   return (

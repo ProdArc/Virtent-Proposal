@@ -50,12 +50,12 @@ export default async function CategoriasPage() {
         </div>
 
         {active.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-hairline bg-card px-6 py-12 text-center">
             <p className="text-sm font-semibold text-ink mb-1">Nenhuma categoria ativa</p>
             <p className="text-sm text-neutral-ink">Cadastre a primeira acima.</p>
           </div>
         ) : (
-          <div className="rounded-3xl bg-white shadow-card overflow-hidden mb-6">
+          <div className="rounded-3xl bg-card shadow-card overflow-hidden mb-6">
             {active.map((c) => {
               const u = usage.get(c.id) ?? { count: 0, total: 0 };
               return (
@@ -83,7 +83,7 @@ export default async function CategoriasPage() {
                     <div className="mt-4 flex flex-wrap items-center gap-4">
                       <Link
                         href={`/financeiro/pagar?category=${c.id}`}
-                        className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+                        className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                       >
                         Ver contas desta categoria →
                       </Link>
@@ -115,10 +115,10 @@ export default async function CategoriasPage() {
 
         {archived.length > 0 && (
           <details className="group">
-            <summary className="cursor-pointer list-none text-xs font-semibold text-brand hover:text-brand-hover transition-colors">
+            <summary className="cursor-pointer list-none text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors">
               Arquivadas ({archived.length})
             </summary>
-            <div className="mt-3 rounded-3xl bg-white shadow-card overflow-hidden">
+            <div className="mt-3 rounded-3xl bg-card shadow-card overflow-hidden">
               {archived.map((c) => {
                 const u = usage.get(c.id) ?? { count: 0, total: 0 };
                 return (
@@ -136,7 +136,7 @@ export default async function CategoriasPage() {
                         <input type="hidden" name="archived" value="false" />
                         <button
                           type="submit"
-                          className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+                          className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                         >
                           Reativar
                         </button>

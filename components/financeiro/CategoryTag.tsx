@@ -15,7 +15,7 @@ export function CategoryTag({
   return (
     <span
       title={archived ? `${name} (categoria arquivada)` : name}
-      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-white px-2 py-0.5 text-[10.5px] font-medium text-neutral-ink"
+      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-2 py-0.5 text-[10.5px] font-medium text-neutral-ink"
     >
       <span
         aria-hidden="true"

@@ -42,13 +42,13 @@ export function BulkActionBar({
       <button
         type="button"
         onClick={() => (allVisibleSelected ? clear() : selectAll(visibleIds))}
-        className="self-start px-1 py-1 text-xs font-semibold text-brand transition-colors hover:text-brand-hover"
+        className="self-start px-1 py-1 text-xs font-semibold text-brand-ink transition-colors hover:text-brand-ink-hover"
       >
         {allVisibleSelected ? "Limpar seleção" : `Selecionar todos os ${visibleIds.length} visíveis`}
       </button>
 
       {selected.size > 0 && (
-        <div className="sticky top-3 z-30 flex flex-wrap items-center gap-2 rounded-3xl bg-white px-4 py-3 shadow-float ring-1 ring-brand/25">
+        <div className="sticky top-3 z-30 flex flex-wrap items-center gap-2 rounded-3xl bg-card px-4 py-3 shadow-float ring-1 ring-brand/25">
           <span className="text-xs font-semibold text-ink shrink-0">
             {selected.size} selecionado{selected.size === 1 ? "" : "s"}
           </span>
@@ -58,7 +58,7 @@ export function BulkActionBar({
             onChange={(e) => setSegment(e.target.value)}
             list="bulk-segment-suggestions"
             placeholder="Segmento pra aplicar (ex: Franquia)"
-            className="min-w-[10rem] flex-1 rounded-2xl border border-hairline bg-white px-3 py-1.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="min-w-[10rem] flex-1 rounded-2xl border border-hairline bg-card px-3 py-1.5 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
           <datalist id="bulk-segment-suggestions">
             {segmentSuggestions.map((s) => (

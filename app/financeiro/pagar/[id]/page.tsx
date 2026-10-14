@@ -70,7 +70,7 @@ export default async function PayableDetailPage({
       />
 
         {/* Resumo financeiro */}
-        <section className="rounded-3xl bg-white shadow-card p-6 mb-5">
+        <section className="rounded-3xl bg-card shadow-card p-6 mb-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
               <p className="text-xs font-medium text-secondary-ink">
@@ -135,7 +135,7 @@ export default async function PayableDetailPage({
                 <input type="hidden" name="id" value={payable.id} />
                 <SubmitButton
                   pendingLabel="Reabrindo..."
-                  className="rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
+                  className="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
                 >
                   Reabrir conta
                 </SubmitButton>
@@ -152,7 +152,7 @@ export default async function PayableDetailPage({
         </section>
 
         {/* Comprovante */}
-        <section className="rounded-3xl bg-white shadow-card p-6 mb-5">
+        <section className="rounded-3xl bg-card shadow-card p-6 mb-5">
           <p className="text-xs font-medium text-secondary-ink mb-3">
             Comprovante / nota fiscal
           </p>
@@ -162,7 +162,7 @@ export default async function PayableDetailPage({
                 href={attachmentUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+                className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
               >
                 Ver anexo
               </a>
@@ -189,11 +189,11 @@ export default async function PayableDetailPage({
                 name="file"
                 accept=".pdf,.xml,.jpg,.jpeg,.png"
                 required
-                className="text-xs text-neutral-ink file:mr-2 file:rounded-full file:border file:border-border file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
+                className="text-xs text-neutral-ink file:mr-2 file:rounded-full file:border file:border-border file:bg-card file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
               />
               <SubmitButton
                 pendingLabel="Enviando..."
-                className="rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
+                className="rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
               >
                 Enviar
               </SubmitButton>
@@ -215,7 +215,7 @@ export default async function PayableDetailPage({
             <input type="hidden" name="id" value={payable.id} />
             <SubmitButton
               pendingLabel="Duplicando..."
-              className="rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
+              className="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface min-h-10"
             >
               Duplicar conta
             </SubmitButton>

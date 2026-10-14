@@ -73,7 +73,7 @@ function ChevronIcon() {
     <svg
       viewBox="0 0 20 20"
       fill="none"
-      className="h-4 w-4 shrink-0 text-[#A1A1AA] transition-transform duration-200 group-open:rotate-90"
+      className="h-4 w-4 shrink-0 text-subtle transition-transform duration-200 group-open:rotate-90"
     >
       <path
         d="M7 4l6 6-6 6"
@@ -174,47 +174,47 @@ export default async function FinanceiroClientPage({
     const billingEmailBlocked = billingEmailBlockedReason(client, b);
     const statusLabel = b.paid ? "Paga" : overdue ? "Atrasada" : future ? "Futura" : "Pendente";
     const statusClass = b.paid
-      ? "bg-[#ECFDF5] text-[#065F46]"
+      ? "bg-paid-bg text-brand-ink"
       : overdue
-        ? "bg-[#FEF2F2] text-[#B91C1C]"
+        ? "bg-overdue-bg text-overdue-ink"
         : future
-          ? "bg-[#F4F4F5] text-[#71717A]"
-          : "bg-[#FFF7ED] text-[#B45309]";
+          ? "bg-neutral-bg text-secondary-ink"
+          : "bg-pending-bg text-pending-ink";
 
     return (
       <details
         key={b.id}
         open
-        className="group rounded-2xl border border-hairline bg-white overflow-hidden open:shadow-sm transition-shadow"
+        className="group rounded-2xl border border-hairline bg-card overflow-hidden open:shadow-sm transition-shadow"
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 select-none hover:bg-[#F9FBF8] transition-colors">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 select-none hover:bg-surface transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             <ChevronIcon />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <p className="text-[15px] font-semibold text-[#18181B]">{cycleLabel(b.due_date)}</p>
+                <p className="text-[15px] font-semibold text-ink">{cycleLabel(b.due_date)}</p>
                 {isMeta ? (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#6D28D9] shrink-0">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-meta-bg text-meta-ink shrink-0">
                     Repasse Meta
                   </span>
                 ) : (
                   hasMetaBillings && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#52525B] shrink-0">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-bg text-muted shrink-0">
                       Mensalidade
                     </span>
                   )
                 )}
                 {current && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#1D4ED8] shrink-0">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-onboarding-bg text-onboarding-ink shrink-0">
                     Ciclo atual
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[#A1A1AA] truncate">Vencimento {dateFmt(b.due_date)}</p>
+              <p className="text-xs text-subtle truncate">Vencimento {dateFmt(b.due_date)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-sm font-semibold text-[#18181B] tabular-nums hidden sm:inline">
+            <span className="text-sm font-semibold text-ink tabular-nums hidden sm:inline">
               {currency.format(total_value)}
             </span>
             <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusClass}`}>
@@ -225,19 +225,19 @@ export default async function FinanceiroClientPage({
 
         <div className="px-4 pb-4">
           {future && (
-            <p className="mt-1 mb-3 rounded-lg bg-[#FFF7ED] px-3 py-2 text-xs text-[#B45309]">
+            <p className="mt-1 mb-3 rounded-lg bg-pending-bg px-3 py-2 text-xs text-pending-ink">
               Ciclo futuro ({cycleLabel(b.due_date)}). O que for lançado aqui entra no faturamento
               de {cycleLabel(b.due_date).toLowerCase()}, não no do mês atual.
             </p>
           )}
-          <div className="border-t border-[#E4E4E7] pt-4 flex flex-wrap items-end gap-3 mb-4">
+          <div className="border-t border-border pt-4 flex flex-wrap items-end gap-3 mb-4">
             {isMeta ? (
               <>
                 <form action={updateBillingMetaAction} className="flex flex-wrap items-end gap-2">
                   <input type="hidden" name="billingId" value={b.id} />
                   <input type="hidden" name="clientId" value={client.id} />
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
                       Contatos disparados
                     </label>
                     <input
@@ -246,29 +246,29 @@ export default async function FinanceiroClientPage({
                       inputMode="numeric"
                       defaultValue={b.meta_dispatches ? intFmt.format(b.meta_dispatches) : ""}
                       placeholder="Ex: 100.000"
-                      className="w-36 rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+                      className="w-36 rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
                       Custo Meta no mês
                     </label>
                     <CurrencyInput name="metaCost" defaultValue={b.meta_cost} className="w-36" />
                   </div>
                   <SubmitButton
                     pendingLabel="Salvando..."
-                    className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                    className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border text-ink hover:bg-surface transition-colors min-h-10"
                   >
                     Salvar
                   </SubmitButton>
                 </form>
 
-                <div className="text-xs text-[#71717A] ml-auto text-right">
+                <div className="text-xs text-secondary-ink ml-auto text-right">
                   <p>
                     Custo Meta {currency.format(pass_through_value)} · {intFmt.format(b.meta_dispatches)}{" "}
                     disparos × {formatFee(b.meta_fee_per_dispatch)} = {currency.format(meta_fee_value)}
                   </p>
-                  <p className="font-semibold text-[#18181B] tabular-nums">
+                  <p className="font-semibold text-ink tabular-nums">
                     Total a cobrar: {currency.format(total_value)}
                   </p>
                 </div>
@@ -279,14 +279,14 @@ export default async function FinanceiroClientPage({
                   <input type="hidden" name="billingId" value={b.id} />
                   <input type="hidden" name="clientId" value={client.id} />
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
                       Mensalidade deste ciclo
                     </label>
                     <CurrencyInput name="monthlyValue" defaultValue={b.monthly_value} className="w-36" />
                   </div>
                   <SubmitButton
                     pendingLabel="Salvando..."
-                    className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                    className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border text-ink hover:bg-surface transition-colors min-h-10"
                   >
                     Salvar
                   </SubmitButton>
@@ -297,21 +297,21 @@ export default async function FinanceiroClientPage({
                     <input type="hidden" name="billingId" value={b.id} />
                     <input type="hidden" name="clientId" value={client.id} />
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
                         Valor arrecadado
                       </label>
                       <CurrencyInput name="revenueAmount" defaultValue={b.revenue_amount} className="w-36" />
                     </div>
                     <SubmitButton
                       pendingLabel="Salvando..."
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border text-ink hover:bg-surface transition-colors min-h-10"
                     >
                       Salvar
                     </SubmitButton>
                   </form>
                 )}
 
-                <div className="text-xs text-[#71717A] ml-auto text-right">
+                <div className="text-xs text-secondary-ink ml-auto text-right">
                   <p>
                     Mensalidade {currency.format(b.monthly_value)}
                     {showRevenue && (
@@ -321,7 +321,7 @@ export default async function FinanceiroClientPage({
                       </>
                     )}
                   </p>
-                  <p className="font-semibold text-[#18181B] tabular-nums">
+                  <p className="font-semibold text-ink tabular-nums">
                     Total a cobrar: {currency.format(total_value)}
                   </p>
                 </div>
@@ -336,7 +336,7 @@ export default async function FinanceiroClientPage({
               <input type="hidden" name="paid" value={(!b.paid).toString()} />
               <SubmitButton
                 pendingLabel="Salvando..."
-                className="text-xs font-semibold px-4 py-1.5 rounded-full bg-[#065F46] text-white hover:bg-[#047857] transition-colors min-h-10"
+                className="text-xs font-semibold px-4 py-1.5 rounded-full bg-brand text-white hover:bg-brand-hover transition-colors min-h-10"
               >
                 {b.paid ? "Desfazer baixa" : "Dar baixa"}
               </SubmitButton>
@@ -346,27 +346,27 @@ export default async function FinanceiroClientPage({
               <input type="hidden" name="clientId" value={client.id} />
               <ConfirmButton
                 confirmText="Excluir esta cobrança?"
-                className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                className="text-xs font-medium text-overdue-ink hover:text-overdue-deep transition-colors"
               >
                 Excluir
               </ConfirmButton>
             </form>
           </div>
 
-          <div className="rounded-2xl bg-[#F6F8F5] p-4">
-            <p className="text-xs font-semibold text-[#71717A] mb-3">
+          <div className="rounded-2xl bg-tint p-4">
+            <p className="text-xs font-semibold text-secondary-ink mb-3">
               Anexos e pagamento
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">NFe</p>
+                <p className="text-[11px] font-semibold text-muted mb-1.5">NFe</p>
                 {b.nfe_path ? (
                   <div className="flex items-center gap-3">
                     <a
                       href={nfeUrls[b.id] ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                      className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                     >
                       Ver NFe
                     </a>
@@ -376,7 +376,7 @@ export default async function FinanceiroClientPage({
                       <input type="hidden" name="path" value={b.nfe_path} />
                       <ConfirmButton
                         confirmText="Excluir a NFe desta cobrança?"
-                        className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                        className="text-xs font-medium text-overdue-ink hover:text-overdue-deep transition-colors"
                       >
                         Excluir
                       </ConfirmButton>
@@ -391,11 +391,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.xml"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
+                      className="text-xs text-secondary-ink file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-border file:bg-card file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border bg-card text-ink hover:bg-surface transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -404,14 +404,14 @@ export default async function FinanceiroClientPage({
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">Comprovante de pagamento</p>
+                <p className="text-[11px] font-semibold text-muted mb-1.5">Comprovante de pagamento</p>
                 {b.comprovante_path ? (
                   <div className="flex items-center gap-3">
                     <a
                       href={comprovanteUrls[b.id] ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                      className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                     >
                       Ver comprovante
                     </a>
@@ -421,7 +421,7 @@ export default async function FinanceiroClientPage({
                       <input type="hidden" name="path" value={b.comprovante_path} />
                       <ConfirmButton
                         confirmText="Excluir o comprovante desta cobrança?"
-                        className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                        className="text-xs font-medium text-overdue-ink hover:text-overdue-deep transition-colors"
                       >
                         Excluir
                       </ConfirmButton>
@@ -440,11 +440,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
+                      className="text-xs text-secondary-ink file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-border file:bg-card file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border bg-card text-ink hover:bg-surface transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -453,12 +453,12 @@ export default async function FinanceiroClientPage({
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <div className="mt-4 pt-4 border-t border-border">
               <form action={updateBillingPixLinkAction} className="flex items-end gap-2">
                 <input type="hidden" name="billingId" value={b.id} />
                 <input type="hidden" name="clientId" value={client.id} />
                 <div className="flex-1">
-                  <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                  <label className="block text-[11px] font-semibold text-muted mb-1">
                     Link de cobrança PIX
                   </label>
                   <input
@@ -466,19 +466,19 @@ export default async function FinanceiroClientPage({
                     type="text"
                     defaultValue={b.pix_link ?? ""}
                     placeholder="Link ou código copia-e-cola"
-                    className="w-full rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                   />
                 </div>
                 <SubmitButton
                   pendingLabel="Salvando..."
-                  className="text-xs font-semibold px-4 py-2 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                  className="text-xs font-semibold px-4 py-2 rounded-full border border-border bg-card text-ink hover:bg-surface transition-colors min-h-10"
                 >
                   Salvar
                 </SubmitButton>
               </form>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <div className="mt-4 pt-4 border-t border-border">
               <SendEmailButton
                 action={sendBillingEmailAction}
                 hiddenFields={{ billingId: b.id, clientId: client.id }}
@@ -556,7 +556,7 @@ export default async function FinanceiroClientPage({
           <span className="flex flex-wrap items-center gap-2">
             {client.name}
             {client.canceled_at && (
-              <span className="rounded-full bg-[#F4F4F5] px-2.5 py-0.5 text-xs font-semibold text-[#71717A]">
+              <span className="rounded-full bg-neutral-bg px-2.5 py-0.5 text-xs font-semibold text-secondary-ink">
                 Cancelado
               </span>
             )}
@@ -575,7 +575,7 @@ export default async function FinanceiroClientPage({
         {methodTags.map((t) => (
           <span
             key={t.key}
-            className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${t.key === "meta" ? "bg-[#F5F3FF] text-[#6D28D9]" : "bg-[#ECFDF5] text-[#065F46]"}`}
+            className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${t.key === "meta" ? "bg-meta-bg text-meta-ink" : "bg-paid-bg text-brand-ink"}`}
           >
             {t.label}
           </span>
@@ -592,7 +592,7 @@ export default async function FinanceiroClientPage({
                 ? `Reativar "${client.name}"? A geração automática de mensalidade volta a valer a partir de agora.`
                 : `Cancelar "${client.name}"? Para de gerar mensalidade nova (automática ou manual), mas o histórico e o que já está em aberto continuam intactos.`
             }
-            className="min-h-10 text-sm font-medium text-[#71717A] transition-colors hover:text-[#18181B]"
+            className="min-h-10 text-sm font-medium text-secondary-ink transition-colors hover:text-ink"
           >
             {client.canceled_at ? "Reativar cliente" : "Cancelar cliente"}
           </ConfirmButton>
@@ -601,7 +601,7 @@ export default async function FinanceiroClientPage({
           <input type="hidden" name="id" value={client.id} />
           <ConfirmButton
             confirmText={`Excluir "${client.name}" e todas as cobranças associadas? Essa ação não pode ser desfeita.`}
-            className="min-h-10 text-sm font-medium text-[#B91C1C] transition-colors hover:text-[#991B1B]"
+            className="min-h-10 text-sm font-medium text-overdue-ink transition-colors hover:text-overdue-deep"
           >
             Excluir cliente
           </ConfirmButton>
@@ -613,20 +613,20 @@ export default async function FinanceiroClientPage({
         {/* Implantação */}
         <details
           open={!client.setup_paid}
-          className="group rounded-3xl bg-white shadow-card mt-8 overflow-hidden"
+          className="group rounded-3xl bg-card shadow-card mt-8 overflow-hidden"
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 sm:p-8 select-none hover:bg-[#F9FBF8] transition-colors">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 sm:p-8 select-none hover:bg-surface transition-colors">
             <div className="flex items-center gap-3 min-w-0">
               <ChevronIcon />
               <div className="min-w-0">
-                <p className="text-[15px] font-bold tracking-tight text-[#18181B] mb-1">
+                <p className="text-[15px] font-bold tracking-tight text-ink mb-1">
                   Implantação
                 </p>
-                <p className="text-lg font-bold text-[#18181B] tabular-nums">
+                <p className="text-lg font-bold text-ink tabular-nums">
                   {currency.format(client.setup_value)}
                 </p>
                 {client.setup_due_date && (
-                  <p className="text-xs text-[#A1A1AA]">
+                  <p className="text-xs text-subtle">
                     Vencimento: {dateFmt(client.setup_due_date)}
                   </p>
                 )}
@@ -634,7 +634,7 @@ export default async function FinanceiroClientPage({
             </div>
             <span
               className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${
-                client.setup_paid ? "bg-[#ECFDF5] text-[#065F46]" : "bg-[#FFF7ED] text-[#B45309]"
+                client.setup_paid ? "bg-paid-bg text-brand-ink" : "bg-pending-bg text-pending-ink"
               }`}
             >
               {client.setup_paid ? "Paga" : "Pendente"}
@@ -642,31 +642,31 @@ export default async function FinanceiroClientPage({
           </summary>
 
           <div className="px-6 sm:px-8 pb-6 sm:pb-8">
-            <form action={toggleSetupPaidAction} className="border-t border-[#E4E4E7] pt-4">
+            <form action={toggleSetupPaidAction} className="border-t border-border pt-4">
               <input type="hidden" name="id" value={client.id} />
               <input type="hidden" name="paid" value={(!client.setup_paid).toString()} />
               <SubmitButton
                 pendingLabel="Salvando..."
-                className="text-sm font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                className="text-sm font-semibold px-4 py-1.5 rounded-full border border-border text-ink hover:bg-surface transition-colors min-h-10"
               >
                 {client.setup_paid ? "Desfazer baixa" : "Dar baixa"}
               </SubmitButton>
             </form>
 
-          <div className="mt-4 rounded-2xl bg-[#F6F8F5] p-4">
-            <p className="text-xs font-semibold text-[#71717A] mb-3">
+          <div className="mt-4 rounded-2xl bg-tint p-4">
+            <p className="text-xs font-semibold text-secondary-ink mb-3">
               Anexos e pagamento
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">NFe</p>
+                <p className="text-[11px] font-semibold text-muted mb-1.5">NFe</p>
                 {client.setup_nfe_path ? (
                   <div className="flex items-center gap-3">
                     <a
                       href={setupNfeUrl ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                      className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                     >
                       Ver NFe
                     </a>
@@ -675,7 +675,7 @@ export default async function FinanceiroClientPage({
                       <input type="hidden" name="path" value={client.setup_nfe_path} />
                       <ConfirmButton
                         confirmText="Excluir a NFe da implantação?"
-                        className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                        className="text-xs font-medium text-overdue-ink hover:text-overdue-deep transition-colors"
                       >
                         Excluir
                       </ConfirmButton>
@@ -693,11 +693,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.xml"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
+                      className="text-xs text-secondary-ink file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-border file:bg-card file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border bg-card text-ink hover:bg-surface transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -706,14 +706,14 @@ export default async function FinanceiroClientPage({
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold text-[#52525B] mb-1.5">Comprovante de pagamento</p>
+                <p className="text-[11px] font-semibold text-muted mb-1.5">Comprovante de pagamento</p>
                 {client.setup_comprovante_path ? (
                   <div className="flex items-center gap-3">
                     <a
                       href={setupComprovanteUrl ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-semibold text-[#065F46] hover:text-[#047857] transition-colors"
+                      className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                     >
                       Ver comprovante
                     </a>
@@ -722,7 +722,7 @@ export default async function FinanceiroClientPage({
                       <input type="hidden" name="path" value={client.setup_comprovante_path} />
                       <ConfirmButton
                         confirmText="Excluir o comprovante da implantação?"
-                        className="text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] transition-colors"
+                        className="text-xs font-medium text-overdue-ink hover:text-overdue-deep transition-colors"
                       >
                         Excluir
                       </ConfirmButton>
@@ -740,11 +740,11 @@ export default async function FinanceiroClientPage({
                       name="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       required
-                      className="text-xs text-[#71717A] file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-[#E4E4E7] file:bg-white file:text-[#18181B] hover:file:bg-[#F9FBF8] file:cursor-pointer min-h-10"
+                      className="text-xs text-secondary-ink file:mr-2 file:text-xs file:font-semibold file:px-2.5 file:py-1.5 file:rounded-full file:border file:border-border file:bg-card file:text-ink hover:file:bg-surface file:cursor-pointer min-h-10"
                     />
                     <SubmitButton
                       pendingLabel="Enviando..."
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border bg-card text-ink hover:bg-surface transition-colors min-h-10"
                     >
                       Enviar
                     </SubmitButton>
@@ -753,11 +753,11 @@ export default async function FinanceiroClientPage({
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <div className="mt-4 pt-4 border-t border-border">
               <form action={updateSetupPixLinkAction} className="flex items-end gap-2">
                 <input type="hidden" name="clientId" value={client.id} />
                 <div className="flex-1">
-                  <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+                  <label className="block text-[11px] font-semibold text-muted mb-1">
                     Link de cobrança PIX
                   </label>
                   <input
@@ -765,19 +765,19 @@ export default async function FinanceiroClientPage({
                     type="text"
                     defaultValue={client.setup_pix_link ?? ""}
                     placeholder="Link ou código copia-e-cola"
-                    className="w-full rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                   />
                 </div>
                 <SubmitButton
                   pendingLabel="Salvando..."
-                  className="text-xs font-semibold px-4 py-2 rounded-full border border-[#E4E4E7] bg-white text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                  className="text-xs font-semibold px-4 py-2 rounded-full border border-border bg-card text-ink hover:bg-surface transition-colors min-h-10"
                 >
                   Salvar
                 </SubmitButton>
               </form>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-[#E4E4E7]">
+            <div className="mt-4 pt-4 border-t border-border">
               <SendEmailButton
                 action={sendSetupEmailAction}
                 hiddenFields={{ clientId: client.id }}
@@ -794,15 +794,15 @@ export default async function FinanceiroClientPage({
         </details>
 
         {/* Cobranças mensais */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mt-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <p className="text-[15px] font-bold tracking-tight text-[#18181B]">
+            <p className="text-[15px] font-bold tracking-tight text-ink">
               Cobranças mensais
             </p>
             {client.canceled_at ? (
-              <span className="text-xs text-[#A1A1AA]">Cliente cancelado — sem geração de ciclo novo</span>
+              <span className="text-xs text-subtle">Cliente cancelado — sem geração de ciclo novo</span>
             ) : nextCycleAlreadyExists ? (
-              <span className="text-xs text-[#A1A1AA]">
+              <span className="text-xs text-subtle">
                 {cycleLabel(nextCycleDate)} já foi gerada
               </span>
             ) : (
@@ -810,14 +810,14 @@ export default async function FinanceiroClientPage({
                 <input type="hidden" name="clientId" value={client.id} />
                 <button
                   type="submit"
-                  className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#E4E4E7] text-[#18181B] hover:bg-[#F9FBF8] transition-colors min-h-10"
+                  className="text-xs font-semibold px-4 py-1.5 rounded-full border border-border text-ink hover:bg-surface transition-colors min-h-10"
                 >
                   Gerar {cycleLabel(nextCycleDate)}
                 </button>
               </form>
             )}
           </div>
-          <div className="text-xs text-[#A1A1AA] mb-5 space-y-0.5">
+          <div className="text-xs text-subtle mb-5 space-y-0.5">
             {hasMonthlyBilling(client) && (
               <p>
                 Mensalidade por ciclo ={" "}
@@ -841,27 +841,27 @@ export default async function FinanceiroClientPage({
           </div>
 
           <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-2xl bg-[#F6F8F5] px-3 py-3 sm:px-4">
-              <p className="text-[11px] font-semibold text-[#52525B] mb-1">Em aberto</p>
-              <p className="text-[13px] font-bold sm:text-base text-[#18181B] tabular-nums">{currency.format(openTotal)}</p>
-              <p className="text-[11px] text-[#A1A1AA]">
+            <div className="rounded-2xl bg-tint px-3 py-3 sm:px-4">
+              <p className="text-[11px] font-semibold text-muted mb-1">Em aberto</p>
+              <p className="text-[13px] font-bold sm:text-base text-ink tabular-nums">{currency.format(openTotal)}</p>
+              <p className="text-[11px] text-subtle">
                 {openBillings.length} cobrança{openBillings.length === 1 ? "" : "s"}
               </p>
             </div>
-            <div className="rounded-2xl bg-[#F6F8F5] px-3 py-3 sm:px-4">
-              <p className="text-[11px] font-semibold text-[#52525B] mb-1">Atrasadas</p>
+            <div className="rounded-2xl bg-tint px-3 py-3 sm:px-4">
+              <p className="text-[11px] font-semibold text-muted mb-1">Atrasadas</p>
               <p
-                className={`text-[13px] font-bold sm:text-base tabular-nums ${overdueBillings.length > 0 ? "text-[#B91C1C]" : "text-[#18181B]"}`}
+                className={`text-[13px] font-bold sm:text-base tabular-nums ${overdueBillings.length > 0 ? "text-overdue-ink" : "text-ink"}`}
               >
                 {overdueBillings.length}
               </p>
             </div>
-            <div className="rounded-2xl bg-[#F6F8F5] px-3 py-3 sm:px-4">
-              <p className="text-[11px] font-semibold text-[#52525B] mb-1">Recebido</p>
-              <p className="text-[13px] font-bold sm:text-base text-[#18181B] tabular-nums">
+            <div className="rounded-2xl bg-tint px-3 py-3 sm:px-4">
+              <p className="text-[11px] font-semibold text-muted mb-1">Recebido</p>
+              <p className="text-[13px] font-bold sm:text-base text-ink tabular-nums">
                 {currency.format(receivedTotal)}
               </p>
-              <p className="text-[11px] text-[#A1A1AA]">
+              <p className="text-[11px] text-subtle">
                 {paidBillings.length} cobrança{paidBillings.length === 1 ? "" : "s"}
               </p>
             </div>

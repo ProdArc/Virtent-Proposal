@@ -7,11 +7,11 @@ import type { PayableFilter } from "@/lib/payables-status";
 const ORDER: PayableFilter[] = ["", "urgent", "overdue", "upcoming", "paid"];
 
 const ACTIVE_CLASS: Record<PayableFilter, string> = {
-  "": "bg-ink text-white border-ink",
-  urgent: "bg-overdue-ink text-white border-overdue-ink",
-  overdue: "bg-overdue-ink text-white border-overdue-ink",
-  upcoming: "bg-pending-ink text-white border-pending-ink",
-  paid: "bg-paid-ink text-white border-paid-ink",
+  "": "bg-strong text-on-strong border-strong",
+  urgent: "bg-overdue-solid text-white border-overdue-solid",
+  overdue: "bg-overdue-solid text-white border-overdue-solid",
+  upcoming: "bg-pending-solid text-white border-pending-solid",
+  paid: "bg-paid-solid text-white border-paid-solid",
 };
 
 interface Current {
@@ -74,7 +74,7 @@ export function PayableFilters({
               className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                 isActive
                   ? ACTIVE_CLASS[filter]
-                  : "border-transparent bg-white text-muted shadow-card hover:text-ink"
+                  : "border-transparent bg-card text-muted shadow-card hover:text-ink"
               }`}
             >
               {labels[filter]}
@@ -99,7 +99,7 @@ export function PayableFilters({
               if (timer.current) clearTimeout(timer.current);
               timer.current = setTimeout(() => go({ q: next.trim() }), 300);
             }}
-            className="w-full w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="w-full w-full rounded-2xl border-0 bg-card px-4 py-2.5 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
         </div>
 
@@ -107,7 +107,7 @@ export function PayableFilters({
           aria-label="Filtrar por fornecedor"
           value={current.supplier}
           onChange={(e) => go({ supplier: e.target.value })}
-          className="w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="w-full rounded-2xl border-0 bg-card px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
           <option value="">Todos os fornecedores</option>
           {suppliers.map((s) => (
@@ -121,7 +121,7 @@ export function PayableFilters({
           aria-label="Filtrar por categoria"
           value={current.category}
           onChange={(e) => go({ category: e.target.value })}
-          className="w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="w-full rounded-2xl border-0 bg-card px-4 py-2.5 text-sm text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
@@ -138,7 +138,7 @@ export function PayableFilters({
             aria-label="Vencimento a partir de"
             value={current.from}
             onChange={(e) => go({ from: e.target.value })}
-            className="w-full min-w-0 rounded-2xl border-0 bg-white px-3 py-2.5 text-[13px] text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="w-full min-w-0 rounded-2xl border-0 bg-card px-3 py-2.5 text-[13px] text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
           <span className="text-xs text-secondary-ink">até</span>
           <input
@@ -146,7 +146,7 @@ export function PayableFilters({
             aria-label="Vencimento até"
             value={current.to}
             onChange={(e) => go({ to: e.target.value })}
-            className="w-full min-w-0 rounded-2xl border-0 bg-white px-3 py-2.5 text-[13px] text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="w-full min-w-0 rounded-2xl border-0 bg-card px-3 py-2.5 text-[13px] text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
         </div>
       </div>
@@ -155,7 +155,7 @@ export function PayableFilters({
         <button
           type="button"
           onClick={() => router.push("/financeiro/pagar")}
-          className="self-start text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+          className="self-start text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
         >
           Limpar filtros
         </button>

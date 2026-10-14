@@ -37,7 +37,7 @@ export function CnpjInput({
       onChange={(e) => setDisplay(formatCnpj(e.target.value))}
       className={
         className ??
-        "w-full rounded-lg border border-[#E4E4E7] px-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#065F46]/30 focus:border-[#065F46]"
+        "w-full rounded-lg border border-border px-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
       }
     />
   );

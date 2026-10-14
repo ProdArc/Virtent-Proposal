@@ -6,7 +6,7 @@ import { mergeCategoryAction, saveCategoryAction, type FormState } from "../acti
 
 const initial: FormState = {};
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 const LABEL = "block text-[11px] font-semibold text-neutral-ink mb-1";
 
 export function CategoryForm({ category }: { category?: CategoryRow }) {
@@ -18,8 +18,8 @@ export function CategoryForm({ category }: { category?: CategoryRow }) {
       action={formAction}
       className={
         editing
-          ? "rounded-2xl border border-hairline bg-white p-4"
-          : "rounded-3xl bg-white shadow-card p-5"
+          ? "rounded-2xl border border-hairline bg-card p-4"
+          : "rounded-3xl bg-card shadow-card p-5"
       }
     >
       {category && <input type="hidden" name="id" value={category.id} />}
@@ -43,7 +43,7 @@ export function CategoryForm({ category }: { category?: CategoryRow }) {
             type="color"
             defaultValue={category?.color ?? "#71717A"}
             aria-label="Cor da categoria"
-            className="h-10 w-16 cursor-pointer rounded-lg border border-border bg-white p-1"
+            className="h-10 w-16 cursor-pointer rounded-lg border border-border bg-card p-1"
           />
         </div>
         <button
@@ -98,7 +98,7 @@ export function MergeCategoryForm({
       </div>
       <button
         type="submit"
-        className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-xs font-semibold text-neutral-ink transition-colors hover:text-ink"
+        className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-card px-4 text-xs font-semibold text-neutral-ink transition-colors hover:text-ink"
       >
         Mesclar e arquivar
       </button>

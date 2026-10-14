@@ -50,7 +50,7 @@ export function SearchInput({ initialValue }: { initialValue: string }) {
           if (timer.current) clearTimeout(timer.current);
           timer.current = setTimeout(() => push(next), 300);
         }}
-        className="w-full rounded-2xl border-0 bg-white py-2.5 pl-11 pr-4 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
+        className="w-full rounded-2xl border-0 bg-card py-2.5 pl-11 pr-4 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
       />
     </div>
   );

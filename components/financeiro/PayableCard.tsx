@@ -59,7 +59,7 @@ export function PayableCard({
 
   return (
     <details className="group border-b border-hairline last:border-b-0">
-      <summary className="flex min-h-[4.5rem] cursor-pointer list-none items-start gap-3 px-4 py-3.5 transition-colors hover:bg-[#F8FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-5">
+      <summary className="flex min-h-[4.5rem] cursor-pointer list-none items-start gap-3 px-4 py-3.5 transition-colors hover:bg-wash focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-5">
         <span
           aria-hidden="true"
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${AVATAR_CLASS[tone]}`}
@@ -114,7 +114,7 @@ export function PayableCard({
         />
       </summary>
 
-      <div className="border-t border-hairline bg-[#F8FAF7] px-4 py-5 sm:px-5">
+      <div className="border-t border-hairline bg-wash px-4 py-5 sm:px-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 mb-4">
           <div>
             <p className="text-xs font-medium text-secondary-ink">
@@ -187,7 +187,7 @@ export function PayableCard({
         </div>
 
         {payable.notes && (
-          <p className="mb-4 whitespace-pre-line rounded-2xl bg-white px-4 py-3 text-xs leading-relaxed text-neutral-ink">
+          <p className="mb-4 whitespace-pre-line rounded-2xl bg-card px-4 py-3 text-xs leading-relaxed text-neutral-ink">
             {payable.notes}
           </p>
         )}

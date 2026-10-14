@@ -15,7 +15,7 @@ export function OpeningBalanceForm({ amount, date }: { amount: number; date: str
   const [state, formAction, pending] = useActionState(saveOpeningBalanceAction, initial);
 
   return (
-    <details className="group rounded-3xl bg-white shadow-card">
+    <details className="group rounded-3xl bg-card shadow-card">
       <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-ink hover:bg-surface transition-colors">
         Ajustes · saldo inicial de caixa
         <span className="ml-2 font-normal text-secondary-ink">
@@ -43,7 +43,7 @@ export function OpeningBalanceForm({ amount, date }: { amount: number; date: str
               type="date"
               defaultValue={date}
               required
-              className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
           <label className="flex items-center gap-2 pb-2.5">
@@ -51,7 +51,7 @@ export function OpeningBalanceForm({ amount, date }: { amount: number; date: str
               type="checkbox"
               name="negative"
               defaultChecked={amount < 0}
-              className="h-4 w-4 rounded border-border text-brand focus:ring-brand/30"
+              className="h-4 w-4 rounded border-border text-brand-ink focus:ring-brand/30"
             />
             <span className="text-xs text-neutral-ink">Começou negativo</span>
           </label>

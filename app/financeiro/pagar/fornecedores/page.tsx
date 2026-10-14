@@ -61,7 +61,7 @@ export default async function FornecedoresPage() {
         </div>
 
         {suppliers.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-hairline bg-card px-6 py-12 text-center">
             <p className="text-sm font-semibold text-ink mb-1">Nenhum fornecedor cadastrado</p>
             <p className="text-sm text-neutral-ink">
               Cadastre acima, ou simplesmente digite o nome ao lançar uma conta — ele é criado
@@ -69,7 +69,7 @@ export default async function FornecedoresPage() {
             </p>
           </div>
         ) : (
-          <div className="rounded-3xl bg-white shadow-card overflow-hidden">
+          <div className="rounded-3xl bg-card shadow-card overflow-hidden">
             {suppliers.map((s) => {
               const st = stats.get(s.id) ?? { openTotal: 0, openCount: 0, month: 0, year: 0 };
               return (
@@ -129,7 +129,7 @@ export default async function FornecedoresPage() {
                     <div className="mt-4 flex items-center gap-4">
                       <Link
                         href={`/financeiro/pagar?supplier=${s.id}`}
-                        className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+                        className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
                       >
                         Ver contas deste fornecedor →
                       </Link>

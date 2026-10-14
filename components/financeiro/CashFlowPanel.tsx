@@ -14,7 +14,7 @@ export interface CashFlowWindow {
  */
 export function CashFlowPanel({ windows }: { windows: CashFlowWindow[] }) {
   return (
-    <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8">
+    <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8">
       <div className="mb-5">
         <h2 className="text-sm font-bold text-ink">Fluxo de caixa projetado</h2>
         <p className="text-xs text-secondary-ink">

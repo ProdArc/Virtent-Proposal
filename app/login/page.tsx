@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { defaultHome } from "@/lib/device";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage({
@@ -9,7 +10,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/painel";
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : await defaultHome();
 
   const user = await getSessionUser();
   if (user) {

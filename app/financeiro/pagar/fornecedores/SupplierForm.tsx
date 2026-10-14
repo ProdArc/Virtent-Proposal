@@ -7,7 +7,7 @@ import { saveSupplierAction, type FormState } from "../actions";
 
 const initial: FormState = {};
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 const LABEL = "block text-[11px] font-semibold text-neutral-ink mb-1";
 
 /** Mesmo formulário serve pra criar (sem `supplier`) e editar (com). */
@@ -20,8 +20,8 @@ export function SupplierForm({ supplier }: { supplier?: SupplierRow }) {
       action={formAction}
       className={
         editing
-          ? "rounded-2xl border border-hairline bg-white p-4"
-          : "rounded-3xl bg-white shadow-card p-5"
+          ? "rounded-2xl border border-hairline bg-card p-4"
+          : "rounded-3xl bg-card shadow-card p-5"
       }
     >
       {supplier && <input type="hidden" name="id" value={supplier.id} />}

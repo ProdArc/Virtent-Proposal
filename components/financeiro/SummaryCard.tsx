@@ -34,7 +34,7 @@ export function SummaryCard({
     <Link
       href={href}
       aria-current={active ? "true" : undefined}
-      className={`${className} block rounded-3xl bg-white px-4 py-4 shadow-card transition-[box-shadow,transform] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+      className={`${className} block rounded-3xl bg-card px-4 py-4 shadow-card transition-[box-shadow,transform] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
         active ? "ring-2 ring-brand/60" : "hover:shadow-float"
       }`}
     >

@@ -37,8 +37,8 @@ export function BillingMethodsFields({
 
   return (
     <fieldset className="sm:col-span-2">
-      <legend className="block text-xs font-semibold text-[#52525B] mb-1.5">Formas de cobrança</legend>
-      <p className="text-[11px] text-[#A1A1AA] mb-2.5">
+      <legend className="block text-xs font-semibold text-muted mb-1.5">Formas de cobrança</legend>
+      <p className="text-[11px] text-subtle mb-2.5">
         Marque todas que valem pra este cliente. Fixo e % saem no mesmo boleto; o repasse Meta sai num
         boleto separado.
       </p>
@@ -51,7 +51,7 @@ export function BillingMethodsFields({
           title="Mensalidade fixa"
           description="Valor fixo todo mês."
         >
-          <label className="block text-[11px] font-semibold text-[#52525B] mb-1">Valor</label>
+          <label className="block text-[11px] font-semibold text-muted mb-1">Valor</label>
           <CurrencyInput name="monthlyValue" required={fixed} defaultValue={defaults.monthlyValue} />
         </MethodTile>
 
@@ -62,8 +62,8 @@ export function BillingMethodsFields({
           title="% sobre arrecadação"
           description="Percentual do que a unidade arrecadou no mês."
         >
-          <label className="block text-[11px] font-semibold text-[#52525B] mb-1">Percentual</label>
-          <div className="flex items-center rounded-lg border border-[#E4E4E7] bg-white focus-within:ring-2 focus-within:ring-[#065F46]/30 focus-within:border-[#065F46]">
+          <label className="block text-[11px] font-semibold text-muted mb-1">Percentual</label>
+          <div className="flex items-center rounded-lg border border-border bg-card focus-within:ring-2 focus-within:ring-brand/30 focus-within:border-brand">
             <input
               name="commissionPct"
               type="number"
@@ -72,9 +72,9 @@ export function BillingMethodsFields({
               max={100}
               required={commission}
               defaultValue={defaults.commissionPct || 5}
-              className="w-full min-w-0 bg-transparent pl-3 py-2 text-sm text-[#18181B] focus:outline-none"
+              className="w-full min-w-0 bg-transparent pl-3 py-2 text-sm text-ink focus:outline-none"
             />
-            <span className="pr-3 text-sm text-[#A1A1AA] select-none">%</span>
+            <span className="pr-3 text-sm text-subtle select-none">%</span>
           </div>
         </MethodTile>
 
@@ -85,21 +85,21 @@ export function BillingMethodsFields({
           title="Repasse Meta"
           description="Custo da Meta no nosso cartão + adicional por contato disparado (não conta mensagem na janela de atendimento)."
         >
-          <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+          <label className="block text-[11px] font-semibold text-muted mb-1">
             Adicional por disparo
           </label>
-          <div className="flex items-center rounded-lg border border-[#E4E4E7] bg-white focus-within:ring-2 focus-within:ring-[#065F46]/30 focus-within:border-[#065F46] mb-2.5">
-            <span className="pl-3 text-sm text-[#A1A1AA] select-none">R$</span>
+          <div className="flex items-center rounded-lg border border-border bg-card focus-within:ring-2 focus-within:ring-brand/30 focus-within:border-brand mb-2.5">
+            <span className="pl-3 text-sm text-subtle select-none">R$</span>
             <input
               name="metaFeePerDispatch"
               type="text"
               inputMode="decimal"
               required={meta}
               defaultValue={String(defaults.metaFeePerDispatch || 0.005).replace(".", ",")}
-              className="w-full min-w-0 bg-transparent px-2 py-2 text-sm text-[#18181B] focus:outline-none"
+              className="w-full min-w-0 bg-transparent px-2 py-2 text-sm text-ink focus:outline-none"
             />
           </div>
-          <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
+          <label className="block text-[11px] font-semibold text-muted mb-1">
             1º vencimento do repasse
           </label>
           <input
@@ -108,12 +108,12 @@ export function BillingMethodsFields({
             defaultValue={defaults.metaFirstBillingDate ?? ""}
             className={inputClassName}
           />
-          <p className="text-[11px] text-[#A1A1AA] mt-1">{metaDateHint}</p>
+          <p className="text-[11px] text-subtle mt-1">{metaDateHint}</p>
         </MethodTile>
       </div>
 
       {none && (
-        <p className="mt-2 text-[11px] text-[#B45309]">Marque ao menos uma forma de cobrança.</p>
+        <p className="mt-2 text-[11px] text-pending-ink">Marque ao menos uma forma de cobrança.</p>
       )}
     </fieldset>
   );
@@ -136,7 +136,7 @@ function MethodTile({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 transition-colors ${checked ? "border-[#065F46]/40 bg-[#F0FAF6]" : "border-[#E4E4E7] bg-white"}`}
+      className={`rounded-xl border p-3 transition-colors ${checked ? "border-brand/40 bg-paid-wash" : "border-border bg-card"}`}
     >
       <label className="flex cursor-pointer items-start gap-2.5">
         <input
@@ -147,8 +147,8 @@ function MethodTile({
           className="mt-0.5 h-4 w-4 shrink-0 accent-[#065F46]"
         />
         <span>
-          <span className="block text-sm font-semibold text-[#18181B]">{title}</span>
-          <span className="block text-[11px] leading-snug text-[#71717A]">{description}</span>
+          <span className="block text-sm font-semibold text-ink">{title}</span>
+          <span className="block text-[11px] leading-snug text-secondary-ink">{description}</span>
         </span>
       </label>
       {/* Escondido, não removido: o valor continua indo no form. */}

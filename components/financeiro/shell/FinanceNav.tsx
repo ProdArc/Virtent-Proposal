@@ -43,7 +43,7 @@ export function FinanceSidebarNav() {
             href={href}
             aria-current={isActive ? "page" : undefined}
             className={`flex h-11 items-center gap-3 rounded-2xl px-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-              isActive ? "bg-brand-light text-brand" : "text-muted hover:bg-neutral-bg hover:text-ink"
+              isActive ? "bg-brand-light text-brand-ink" : "text-muted hover:bg-neutral-bg hover:text-ink"
             }`}
           >
             <IconCmp size={22} weight={isActive ? "fill" : "regular"} aria-hidden="true" />
@@ -61,7 +61,7 @@ export function FinanceBottomNav() {
   return (
     <nav
       aria-label="Financeiro"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-[1.75rem] bg-white/95 p-1.5 shadow-float ring-1 ring-black/5 backdrop-blur lg:hidden"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-[1.75rem] bg-card/95 p-1.5 shadow-float ring-1 ring-hairline backdrop-blur lg:hidden"
     >
       <ul className="grid grid-cols-4 gap-1">
         {ITEMS.map(({ key, label, href, icon: IconCmp }) => {
@@ -72,7 +72,7 @@ export function FinanceBottomNav() {
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] text-[10.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-                  isActive ? "bg-brand-light text-brand" : "text-secondary-ink active:bg-neutral-bg"
+                  isActive ? "bg-brand-light text-brand-ink" : "text-secondary-ink active:bg-neutral-bg"
                 }`}
               >
                 <IconCmp size={22} weight={isActive ? "fill" : "regular"} aria-hidden="true" />

@@ -37,7 +37,7 @@ export function FilterSelect({
         const query = params.toString();
         router.push(query ? `${basePath}?${query}` : basePath);
       }}
-      className="w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm font-medium text-[#18181B] shadow-card focus:outline-none focus:ring-2 focus:ring-[#065F46]/30"
+      className="w-full rounded-2xl border-0 bg-card px-4 py-2.5 text-sm font-medium text-ink shadow-card focus:outline-none focus:ring-2 focus:ring-brand/30"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>
@@ -51,7 +51,7 @@ export function FilterSelect({
 
   return (
     <label className="block">
-      <span className="mb-1.5 block px-1 text-xs font-medium text-[#71717A]">{label}</span>
+      <span className="mb-1.5 block px-1 text-xs font-medium text-secondary-ink">{label}</span>
       {select}
     </label>
   );

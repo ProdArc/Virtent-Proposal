@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 @theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Cores como variáveis CSS (não inline): o tema escuro do financeiro só
+   precisa redefini-las dentro de .fin-app[data-theme]. `static` emite todas,
+   mesmo as que só o escuro usa. */
+@theme static {
   --color-brand: #065F46;
   --color-brand-hover: #047857;
   --color-brand-light: #ECFDF5;
@@ -59,8 +67,29 @@
   --shadow-card: 0 1px 2px rgba(16, 24, 20, 0.04), 0 10px 28px -14px rgba(16, 24, 20, 0.14);
   --shadow-float: 0 8px 30px -8px rgba(16, 24, 20, 0.22), 0 2px 6px rgba(16, 24, 20, 0.06);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Tokens que o tema escuro precisa inverter (no claro, valores de sempre). */
+  --color-card: #FFFFFF;
+  --color-line: rgba(24, 24, 27, 0.1);
+  --color-wash: #F8FAF7;
+  --color-tint: #F6F8F5;
+  --color-strong: #18181B;
+  --color-on-strong: #FFFFFF;
+  --color-on-strong-soft: #D4D4D8;
+  --color-brand-ink: #065F46;
+  --color-brand-ink-hover: #047857;
+  --color-brand-light-hover: #D8F2E5;
+  --color-overdue-deep: #991B1B;
+  --color-overdue-bg-hover: #FBE0E0;
+  --color-paid-wash: #F0FAF6;
+  --color-meta-bg: #F5F3FF;
+  --color-meta-ink: #6D28D9;
+  /* Fundos sólidos com texto branco por cima (chips selecionados, selos):
+     não clareiam no escuro, senão o branco perde contraste. */
+  --color-paid-solid: #065F46;
+  --color-pending-solid: #B45309;
+  --color-overdue-solid: #B91C1C;
+  --color-onboarding-solid: #1D4ED8;
 }
 
 :root {
@@ -323,5 +352,150 @@ body {
 }
 .fin-scroll-x::-webkit-scrollbar {
   display: none;
+}
+/* ────────────────────────────────────────────────────────────── */
+
+/* ── Tema escuro do financeiro (só celular/tablet, < 1024px) ──────────
+   data-theme vem do cookie fin_theme (ver app/financeiro/layout.tsx):
+     "dark"  → escolhido no botão do topo
+     "light" → escolhido no botão do topo (ignora o sistema)
+     "auto"  → sem escolha: segue o tema do aparelho
+   No desktop (≥ 1024px) nada disso se aplica: continua o tema claro. */
+.fin-when-dark {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .fin-app[data-theme="dark"] {
+    color-scheme: dark;
+    --color-canvas: #0C110F;
+    --color-card: #151B18;
+    --color-surface: #1A221E;
+    --color-surface-alt: #1F2823;
+    --color-wash: #1B2420;
+    --color-tint: #1C2521;
+    --color-hairline: rgba(255, 255, 255, 0.08);
+    --color-line: rgba(255, 255, 255, 0.14);
+    --color-border: #2A332F;
+    --color-ink: #EEF2EF;
+    --color-muted: #C3CBC6;
+    --color-secondary-ink: #9BA6A0;
+    --color-subtle: #6E7A74;
+    --color-strong: #EEF2EF;
+    --color-on-strong: #0C110F;
+    --color-on-strong-soft: #3B4540;
+    --color-brand: #0E7A56;
+    --color-brand-hover: #12936A;
+    --color-brand-light: #12352A;
+    --color-brand-light-hover: #184536;
+    --color-brand-ink: #4ADE9E;
+    --color-brand-ink-hover: #86EFC0;
+    --color-paid-ink: #4ADE9E;
+    --color-paid-bg: #12352A;
+    --color-paid-line: #1F5A45;
+    --color-paid-wash: #112E25;
+    --color-paid-solid: #0B7050;
+    --color-pending-ink: #F5B561;
+    --color-pending-bg: #3A2A12;
+    --color-pending-line: #6B4A1C;
+    --color-pending-solid: #B45309;
+    --color-overdue-ink: #F87171;
+    --color-overdue-bg: #3B1818;
+    --color-overdue-line: #6B2A2A;
+    --color-overdue-deep: #FCA5A5;
+    --color-overdue-bg-hover: #4A1F1F;
+    --color-overdue-solid: #C42B2B;
+    --color-onboarding-ink: #7DB3FF;
+    --color-onboarding-bg: #14233F;
+    --color-onboarding-line: #25407A;
+    --color-onboarding-solid: #2F5FD0;
+    --color-neutral-ink: #B6BEB9;
+    --color-neutral-bg: #232B27;
+    --color-neutral-line: #2F3833;
+    --color-meta-bg: #2A1F4A;
+    --color-meta-ink: #C4B5FD;
+    --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+    --shadow-float: 0 8px 30px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Sobra de rolagem (bounce do iOS) e áreas fora do .fin-app seguem o tema. */
+  body:has(.fin-app[data-theme="dark"]) {
+    background: #0C110F;
+  }
+
+  /* Ícone do botão de tema: lua no claro, sol no escuro. */
+  .fin-app[data-theme="dark"] .fin-when-light {
+    display: none;
+  }
+  .fin-app[data-theme="dark"] .fin-when-dark {
+    display: inline-block;
+  }
+}
+
+@media (max-width: 1023px) and (prefers-color-scheme: dark) {
+  .fin-app[data-theme="auto"] {
+    color-scheme: dark;
+    --color-canvas: #0C110F;
+    --color-card: #151B18;
+    --color-surface: #1A221E;
+    --color-surface-alt: #1F2823;
+    --color-wash: #1B2420;
+    --color-tint: #1C2521;
+    --color-hairline: rgba(255, 255, 255, 0.08);
+    --color-line: rgba(255, 255, 255, 0.14);
+    --color-border: #2A332F;
+    --color-ink: #EEF2EF;
+    --color-muted: #C3CBC6;
+    --color-secondary-ink: #9BA6A0;
+    --color-subtle: #6E7A74;
+    --color-strong: #EEF2EF;
+    --color-on-strong: #0C110F;
+    --color-on-strong-soft: #3B4540;
+    --color-brand: #0E7A56;
+    --color-brand-hover: #12936A;
+    --color-brand-light: #12352A;
+    --color-brand-light-hover: #184536;
+    --color-brand-ink: #4ADE9E;
+    --color-brand-ink-hover: #86EFC0;
+    --color-paid-ink: #4ADE9E;
+    --color-paid-bg: #12352A;
+    --color-paid-line: #1F5A45;
+    --color-paid-wash: #112E25;
+    --color-paid-solid: #0B7050;
+    --color-pending-ink: #F5B561;
+    --color-pending-bg: #3A2A12;
+    --color-pending-line: #6B4A1C;
+    --color-pending-solid: #B45309;
+    --color-overdue-ink: #F87171;
+    --color-overdue-bg: #3B1818;
+    --color-overdue-line: #6B2A2A;
+    --color-overdue-deep: #FCA5A5;
+    --color-overdue-bg-hover: #4A1F1F;
+    --color-overdue-solid: #C42B2B;
+    --color-onboarding-ink: #7DB3FF;
+    --color-onboarding-bg: #14233F;
+    --color-onboarding-line: #25407A;
+    --color-onboarding-solid: #2F5FD0;
+    --color-neutral-ink: #B6BEB9;
+    --color-neutral-bg: #232B27;
+    --color-neutral-line: #2F3833;
+    --color-meta-bg: #2A1F4A;
+    --color-meta-ink: #C4B5FD;
+    --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+    --shadow-float: 0 8px 30px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Sobra de rolagem (bounce do iOS) e áreas fora do .fin-app seguem o tema. */
+  body:has(.fin-app[data-theme="auto"]) {
+    background: #0C110F;
+  }
+
+  /* Ícone do botão de tema: lua no claro, sol no escuro. */
+  .fin-app[data-theme="auto"] .fin-when-light {
+    display: none;
+  }
+  .fin-app[data-theme="auto"] .fin-when-dark {
+    display: inline-block;
+  }
 }
 /* ────────────────────────────────────────────────────────────── */

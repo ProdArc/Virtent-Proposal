@@ -6,7 +6,7 @@ import { addManualIncomeAction, type FormState } from "./actions";
 
 const initial: FormState = {};
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 const LABEL = "block text-[11px] font-semibold text-neutral-ink mb-1";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -26,7 +26,7 @@ export function ManualIncomeForm() {
   }, [state.ok]);
 
   return (
-    <details className="group rounded-3xl bg-white shadow-card">
+    <details className="group rounded-3xl bg-card shadow-card">
       <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-ink hover:bg-surface transition-colors">
         Adicionar entrada manual
         <span className="ml-2 font-normal text-secondary-ink">aporte, devolução, outras receitas...</span>

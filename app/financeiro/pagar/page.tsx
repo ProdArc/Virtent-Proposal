@@ -267,7 +267,7 @@ export default async function ContasAPagarPage({
           {visible.length > 0 && (
             <a
               href={`/financeiro/pagar/export?${exportParams.toString()}`}
-              className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+              className="text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
             >
               Exportar CSV
             </a>
@@ -299,7 +299,7 @@ export default async function ContasAPagarPage({
           grouped.map(({ group, items }) => (
             <section key={group}>
               <UrgencyGroupHeader group={group as UrgencyGroup} count={items.length} />
-              <div className="rounded-3xl bg-white shadow-card overflow-hidden">
+              <div className="rounded-3xl bg-card shadow-card overflow-hidden">
                 {items.map((p) => (
                   <PayableCard
                     key={p.id}

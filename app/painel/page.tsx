@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { isPhone } from "@/lib/device";
 import { listProposals } from "@/lib/proposals";
 import { listFinancialClients, getBillingSummaryByClient } from "@/lib/financial";
 import { LogoutButton } from "@/components/ui/LogoutButton";
@@ -13,6 +15,9 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const dynamic = "force-dynamic";
 
 export default async function PainelPage() {
+  // No celular não há o que escolher: financeiro é o uso do dia a dia.
+  if (await isPhone()) redirect("/financeiro");
+
   const user = await getSessionUser();
 
   let proposalsCount = 0;

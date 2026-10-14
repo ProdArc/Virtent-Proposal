@@ -6,7 +6,7 @@ export function LogoutButton({ className }: { className?: string }) {
       <button
         type="submit"
         className={
-          className ?? "text-xs font-medium text-[#71717A] hover:text-[#18181B] transition-colors"
+          className ?? "text-xs font-medium text-secondary-ink hover:text-ink transition-colors"
         }
       >
         Sair

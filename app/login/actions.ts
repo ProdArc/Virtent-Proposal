@@ -3,21 +3,22 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSessionToken, SESSION_COOKIE, validateCredentials } from "@/lib/auth";
+import { defaultHome } from "@/lib/device";
 
 export interface LoginState {
   error?: string;
 }
 
 /** Só aceita redirecionar pra um caminho local (`/algo`) — nunca uma URL externa (`//evil.com`, `https://...`). */
-function safeNextPath(next: FormDataEntryValue | null): string {
+function safeNextPath(next: FormDataEntryValue | null, fallback: string): string {
   const value = typeof next === "string" ? next : "";
-  return value.startsWith("/") && !value.startsWith("//") ? value : "/painel";
+  return value.startsWith("/") && !value.startsWith("//") ? value : fallback;
 }
 
 export async function loginAction(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   const username = String(formData.get("username") || "").trim();
   const password = String(formData.get("password") || "");
-  const next = safeNextPath(formData.get("next"));
+  const next = safeNextPath(formData.get("next"), await defaultHome());
 
   if (!username || !password) {
     return { error: "Preencha usuário e senha." };

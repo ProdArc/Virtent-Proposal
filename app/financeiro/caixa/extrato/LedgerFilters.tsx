@@ -13,7 +13,7 @@ interface Current {
 }
 
 const FIELD =
-  "w-full rounded-2xl border-0 bg-white px-4 py-2.5 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-2xl border-0 bg-card px-4 py-2.5 text-sm text-ink shadow-card placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30";
 
 export function LedgerFilters({
   current,
@@ -40,9 +40,9 @@ export function LedgerFilters({
   }
 
   const chips = [
-    { value: "", label: "Tudo", active: "bg-ink text-white border-ink" },
-    { value: "in", label: "Entradas", active: "bg-paid-ink text-white border-paid-ink" },
-    { value: "out", label: "Saídas", active: "bg-overdue-ink text-white border-overdue-ink" },
+    { value: "", label: "Tudo", active: "bg-strong text-on-strong border-strong" },
+    { value: "in", label: "Entradas", active: "bg-paid-solid text-white border-paid-solid" },
+    { value: "out", label: "Saídas", active: "bg-overdue-solid text-white border-overdue-solid" },
   ];
 
   const hasFilter = current.type || current.kind || current.q || current.from || current.to;
@@ -59,7 +59,7 @@ export function LedgerFilters({
             className={`inline-flex h-10 shrink-0 items-center rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
               current.type === c.value
                 ? c.active
-                : "border-transparent bg-white text-muted shadow-card hover:text-ink"
+                : "border-transparent bg-card text-muted shadow-card hover:text-ink"
             }`}
           >
             {c.label}
@@ -119,7 +119,7 @@ export function LedgerFilters({
         <button
           type="button"
           onClick={() => router.push("/financeiro/caixa/extrato")}
-          className="self-start text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
+          className="self-start text-xs font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors"
         >
           Limpar filtros
         </button>

@@ -4,11 +4,11 @@ import { FILTER_LABEL, type StatusFilter } from "@/lib/financeiro-status";
 const ORDER: StatusFilter[] = ["", "urgent", "overdue", "upcoming", "ok"];
 
 const ACTIVE_CLASS: Record<StatusFilter, string> = {
-  "": "bg-ink text-white border-ink",
-  urgent: "bg-overdue-ink text-white border-overdue-ink",
-  overdue: "bg-overdue-ink text-white border-overdue-ink",
-  upcoming: "bg-pending-ink text-white border-pending-ink",
-  ok: "bg-paid-ink text-white border-paid-ink",
+  "": "bg-strong text-on-strong border-strong",
+  urgent: "bg-overdue-solid text-white border-overdue-solid",
+  overdue: "bg-overdue-solid text-white border-overdue-solid",
+  upcoming: "bg-pending-solid text-white border-pending-solid",
+  ok: "bg-paid-solid text-white border-paid-solid",
 };
 
 /**
@@ -50,7 +50,7 @@ export function StatusChips({
             className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
               isActive
                 ? ACTIVE_CLASS[filter]
-                : "border-transparent bg-white text-muted shadow-card hover:text-ink"
+                : "border-transparent bg-card text-muted shadow-card hover:text-ink"
             }`}
           >
             {FILTER_LABEL[filter]}

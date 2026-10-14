@@ -8,7 +8,7 @@ import { updatePayableAction, type FormState } from "../actions";
 
 const initial: FormState = {};
 const FIELD =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 const LABEL = "block text-[11px] font-semibold text-neutral-ink mb-1";
 
 /**
@@ -32,7 +32,7 @@ export function EditPayableForm({
   const [state, formAction, pending] = useActionState(updatePayableAction, initial);
 
   return (
-    <form action={formAction} className="rounded-3xl bg-white shadow-card p-6">
+    <form action={formAction} className="rounded-3xl bg-card shadow-card p-6">
       <input type="hidden" name="id" value={payable.id} />
       <p className="mb-4 text-[10.5px] font-semibold uppercase tracking-wide text-secondary-ink">
         Dados da conta

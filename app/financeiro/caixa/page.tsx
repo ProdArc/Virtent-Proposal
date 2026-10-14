@@ -192,13 +192,13 @@ export default async function CaixaPage({
         </div>
 
         {/* Resultado do mês */}
-        <section className="rounded-3xl bg-white shadow-card p-6 mb-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 mb-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-bold text-ink">Resultado do mês</h2>
               <p className="text-xs text-secondary-ink">
                 Entradas menos saídas do mês corrente ·{" "}
-                <Link href="/financeiro/caixa/dre" className="font-semibold text-brand hover:text-brand-hover transition-colors">
+                <Link href="/financeiro/caixa/dre" className="font-semibold text-brand-ink hover:text-brand-ink-hover transition-colors">
                   ver DRE completo
                 </Link>
               </p>
@@ -233,7 +233,7 @@ export default async function CaixaPage({
         </section>
 
         {/* Projeção */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mb-6">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-ink">Saldo projetado</h2>
             <p className="text-xs text-secondary-ink">
@@ -297,7 +297,7 @@ export default async function CaixaPage({
                   min={today}
                   defaultValue={untilParam || undefined}
                   aria-label="Escolher data para projetar o saldo"
-                  className="min-w-0 flex-1 rounded-lg border border-border bg-white px-2 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
                 <button
                   type="submit"
@@ -366,7 +366,7 @@ export default async function CaixaPage({
         </section>
 
         {/* Evolução */}
-        <section className="rounded-3xl bg-white shadow-card p-6 sm:p-8 mb-6">
+        <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mb-6">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-ink">Evolução do saldo</h2>
             <p className="text-xs text-secondary-ink">Saldo acumulado ao fim de cada mês</p>

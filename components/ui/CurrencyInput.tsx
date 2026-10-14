@@ -37,9 +37,9 @@ export function CurrencyInput({
 
   return (
     <div
-      className={`flex items-center rounded-lg border border-[#E4E4E7] bg-white focus-within:ring-2 focus-within:ring-[#065F46]/30 focus-within:border-[#065F46] ${className ?? ""}`}
+      className={`flex items-center rounded-lg border border-border bg-card focus-within:ring-2 focus-within:ring-brand/30 focus-within:border-brand ${className ?? ""}`}
     >
-      <span className="pl-3 text-sm text-[#A1A1AA] select-none">R$</span>
+      <span className="pl-3 text-sm text-subtle select-none">R$</span>
       <input
         id={id}
         name={name}
@@ -49,7 +49,7 @@ export function CurrencyInput({
         placeholder="0,00"
         value={display}
         onChange={(e) => setDisplay(formatFromDigits(e.target.value))}
-        className="w-full min-w-0 bg-transparent pl-1.5 pr-3 py-2.5 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none"
+        className="w-full min-w-0 bg-transparent pl-1.5 pr-3 py-2.5 text-sm text-ink placeholder:text-subtle focus:outline-none"
       />
     </div>
   );

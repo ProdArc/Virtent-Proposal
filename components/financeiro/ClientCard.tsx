@@ -12,7 +12,7 @@ const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "
 const METHOD_TAG_CLASS: Record<BillingMethodTag["key"], string> = {
   fixed: "bg-paid-bg text-paid-ink",
   commission: "bg-paid-bg text-paid-ink",
-  meta: "bg-[#F5F3FF] text-[#6D28D9]",
+  meta: "bg-meta-bg text-meta-ink",
 };
 
 const ACTION_CLASS: Record<Tone, string> = {
@@ -52,7 +52,7 @@ export function ClientCard({
 
   return (
     <details className="group border-b border-hairline last:border-b-0">
-      <summary className="flex min-h-[3.75rem] cursor-pointer list-none items-start gap-3 px-4 py-3 transition-colors sm:items-center hover:bg-[#F8FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-5">
+      <summary className="flex min-h-[3.75rem] cursor-pointer list-none items-start gap-3 px-4 py-3 transition-colors sm:items-center hover:bg-wash focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-5">
         <ClientCheckbox id={client.id} name={client.name} />
 
         <span
@@ -139,7 +139,7 @@ export function ClientCard({
       </summary>
 
       {/* Detalhes — só no modo expandido, pra manter o card compacto. */}
-      <div className="border-t border-hairline bg-[#F8FAF7] px-4 py-5 sm:px-5">
+      <div className="border-t border-hairline bg-wash px-4 py-5 sm:px-5">
         <div className="mb-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           <div className="col-span-2">
             <p className="mb-1.5 text-xs font-medium text-secondary-ink">Forma de cobrança</p>
