@@ -107,12 +107,15 @@ export function HeroCard({
   hint,
   tone = "neutral",
   children,
+  side,
 }: {
   label: string;
   value: string;
   hint?: ReactNode;
   tone?: "neutral" | "overdue" | "paid";
   children?: ReactNode;
+  /** Coluna à direita do valor principal — ex: saldo real dos bancos conectados. */
+  side?: ReactNode;
 }) {
   const valueClass =
     tone === "overdue" ? "text-overdue-ink" : tone === "paid" ? "text-paid-ink" : "text-ink";
@@ -123,15 +126,18 @@ export function HeroCard({
         aria-hidden="true"
         className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_68%)]"
       />
-      <div className="relative">
-        <p className="text-[13px] font-medium text-secondary-ink">{label}</p>
-        <p
-          className={`mt-1 text-[34px] font-extrabold leading-none tracking-tight tabular-nums sm:text-[44px] ${valueClass}`}
-        >
-          {value}
-        </p>
-        {hint && <div className="mt-2 text-[13px] text-secondary-ink">{hint}</div>}
-        {children && <div className="mt-5">{children}</div>}
+      <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-secondary-ink">{label}</p>
+          <p
+            className={`mt-1 text-[34px] font-extrabold leading-none tracking-tight tabular-nums sm:text-[44px] ${valueClass}`}
+          >
+            {value}
+          </p>
+          {hint && <div className="mt-2 text-[13px] text-secondary-ink">{hint}</div>}
+          {children && <div className="mt-5">{children}</div>}
+        </div>
+        {side && <div className="w-full shrink-0 sm:w-72">{side}</div>}
       </div>
     </section>
   );

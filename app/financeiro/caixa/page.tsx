@@ -6,7 +6,7 @@ import { remainingAmount } from "@/lib/payables-status";
 import { daysUntil, todayIso } from "@/lib/urgency";
 import { Bank, ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
 import { getLiveBalances, type LiveBalance } from "@/lib/pluggy-connections";
-import { HeroCard, Panel, PageHeader, QuickAction } from "@/components/financeiro/ui";
+import { HeroCard, PageHeader, QuickAction } from "@/components/financeiro/ui";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
@@ -164,6 +164,42 @@ export default async function CaixaPage({
             {balance.movements === 1 ? "" : "s"}
           </>
         }
+        side={
+          liveBalances.length > 0 ? (
+            <div className="flex flex-col gap-3 sm:items-end">
+              {liveBalances.map((b) => {
+                const diff = round2(b.balance - saldo);
+                return (
+                  <div key={b.connectionId} className="w-full text-left sm:text-right">
+                    <p className="text-xs font-semibold text-secondary-ink">
+                      Saldo real — {b.institutionName}
+                      {b.accountName ? ` (${b.accountName})` : ""}
+                    </p>
+                    {b.error ? (
+                      <p className="mt-1 text-xs text-overdue-ink">{b.error}</p>
+                    ) : (
+                      <>
+                        <p className="mt-0.5 text-xl font-extrabold tabular-nums text-ink">
+                          {currency.format(b.balance)}
+                        </p>
+                        {Math.abs(diff) > 0.01 && (
+                          <p
+                            className={`mt-1 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                              diff > 0 ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
+                            }`}
+                          >
+                            {diff > 0 ? "+" : ""}
+                            {currency.format(diff)} vs. controle
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : undefined
+        }
       >
         <div className="flex items-start justify-between gap-2 sm:justify-start sm:gap-6">
           <QuickAction href="/financeiro/caixa/extrato" label="Extrato" icon={ListBullets} />
@@ -173,43 +209,6 @@ export default async function CaixaPage({
           <QuickAction href="/financeiro/pagar" label="A pagar" icon={Receipt} />
         </div>
       </HeroCard>
-
-      {liveBalances.length > 0 && (
-        <div className="mb-6 mt-4 flex flex-col gap-3">
-          {liveBalances.map((b) => {
-            const diff = round2(b.balance - saldo);
-            return (
-              <Panel key={b.connectionId}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-secondary-ink">
-                      Saldo real — {b.institutionName}
-                      {b.accountName ? ` (${b.accountName})` : ""}
-                    </p>
-                    {b.error ? (
-                      <p className="mt-1 text-sm text-overdue-ink">{b.error}</p>
-                    ) : (
-                      <p className="mt-0.5 text-xl font-extrabold tabular-nums text-ink">
-                        {currency.format(b.balance)}
-                      </p>
-                    )}
-                  </div>
-                  {!b.error && Math.abs(diff) > 0.01 && (
-                    <p
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                        diff > 0 ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
-                      }`}
-                    >
-                      {diff > 0 ? "+" : ""}
-                      {currency.format(diff)} vs. controle
-                    </p>
-                  )}
-                </div>
-              </Panel>
-            );
-          })}
-        </div>
-      )}
 
         {/* Previsto — conceito diferente de saldo, rotulado pra não confundir */}
         <div className="mb-6 mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
