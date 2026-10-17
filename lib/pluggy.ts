@@ -7,10 +7,10 @@ import "server-only";
  * fica contido aqui — o resto do app só conhece `PluggyTransaction` e
  * `lib/bank-transactions.ts`.
  *
- * IMPORTANTE: escrito contra a documentação pública da Pluggy, mas sem conta
- * própria pra testar de verdade ainda — confira os endpoints/campos abaixo
- * contra https://docs.pluggy.ai assim que tiver acesso ao sandbox, antes de
- * depender disso em produção.
+ * Endpoints conferidos contra a API real (conta MeuPluggy conectada), não só
+ * contra a documentação — a doc pública ficou desatualizada em pelo menos um
+ * ponto (ver `fetchRecentTransactions`). Se algo mudar de novo, o sintoma é
+ * sempre um erro vindo de `pluggyFetch` com o status/corpo da resposta.
  */
 
 const PLUGGY_BASE_URL = "https://api.pluggy.ai";
@@ -103,13 +103,31 @@ export interface PluggyTransaction {
   amount: number;
 }
 
-/** Busca transações recentes de uma conta — chamado quando o webhook avisa que houve sincronização nova. */
+/**
+ * Busca transações recentes de uma conta — chamado quando o webhook avisa
+ * que houve sincronização nova, ou pelo "Sincronizar agora".
+ *
+ * GET /transactions foi descontinuado pela Pluggy (410 ENDPOINT_DEPRECATED)
+ * em favor de GET /v2/transactions, que não aceita mais `from`/`pageSize` —
+ * pagina por cursor (`next`) e não filtra por data na query. Por isso busca
+ * tudo que o cursor trouxer e filtra `fromDateIso` aqui mesmo.
+ */
 export async function fetchRecentTransactions(
   accountId: string,
   fromDateIso: string
 ): Promise<PluggyTransaction[]> {
-  const data = await pluggyFetch<{ results: PluggyTransaction[] }>(
-    `/transactions?accountId=${encodeURIComponent(accountId)}&from=${fromDateIso}&pageSize=200`
-  );
-  return data.results;
+  const all: PluggyTransaction[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const query = new URLSearchParams({ accountId });
+    if (cursor) query.set("cursor", cursor);
+    const data: { results: PluggyTransaction[]; next: string | null } = await pluggyFetch(
+      `/v2/transactions?${query.toString()}`
+    );
+    all.push(...data.results);
+    cursor = data.next;
+  } while (cursor);
+
+  return all.filter((t) => t.date.slice(0, 10) >= fromDateIso);
 }
