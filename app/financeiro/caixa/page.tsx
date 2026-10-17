@@ -4,7 +4,7 @@ import { calcBillingTotal, listAllBillings, listFinancialClients } from "@/lib/f
 import { listPayables } from "@/lib/payables";
 import { remainingAmount } from "@/lib/payables-status";
 import { daysUntil, todayIso } from "@/lib/urgency";
-import { ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
+import { Bank, ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
 import { HeroCard, PageHeader, QuickAction } from "@/components/financeiro/ui";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
@@ -155,6 +155,7 @@ export default async function CaixaPage({
       >
         <div className="flex items-start justify-between gap-2 sm:justify-start sm:gap-6">
           <QuickAction href="/financeiro/caixa/extrato" label="Extrato" icon={ListBullets} />
+          <QuickAction href="/financeiro/caixa/banco" label="Banco" icon={Bank} />
           <QuickAction href="/financeiro/caixa/dre" label="DRE" icon={ChartPieSlice} />
           <QuickAction href="/financeiro" label="A receber" icon={HandCoins} />
           <QuickAction href="/financeiro/pagar" label="A pagar" icon={Receipt} />

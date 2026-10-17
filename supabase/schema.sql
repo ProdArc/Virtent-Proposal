@@ -220,3 +220,38 @@ select
   coalesce(sum(case when direction = 'out' then amount else 0 end), 0)::numeric(14,2) as total_out,
   count(*) as movements
 from cash_movements;
+
+-- Extrato bancário via Open Finance (Pluggy): fila de triagem, não é fonte de
+-- verdade — quem registra o dinheiro de fato é sempre payables/cash_movements.
+create table if not exists bank_transactions (
+  id uuid primary key default gen_random_uuid(),
+  pluggy_transaction_id text not null unique,
+  pluggy_account_id text not null,
+  occurred_at date not null,
+  description text not null,
+  amount numeric(12,2) not null check (amount > 0),
+  direction text not null check (direction in ('in', 'out')),
+  category text,
+  note text,
+  status text not null default 'pending' check (status in ('pending', 'linked', 'dismissed')),
+  linked_type text check (linked_type in ('payable', 'manual_income')),
+  linked_id uuid,
+  raw jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists bank_transactions_status_idx on bank_transactions (status, occurred_at desc);
+
+-- Contas bancárias conectadas via widget da Pluggy — só o necessário pra
+-- buscar transações (accountId) e sincronizar sob demanda.
+create table if not exists pluggy_connections (
+  id uuid primary key default gen_random_uuid(),
+  pluggy_item_id text not null,
+  pluggy_account_id text not null unique,
+  institution_name text not null,
+  account_name text,
+  last_synced_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);

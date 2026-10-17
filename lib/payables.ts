@@ -408,6 +408,56 @@ export async function payPayable(id: string, amount?: number): Promise<void> {
   });
 }
 
+/**
+ * Lança uma conta já paga, direto do extrato bancário — o dinheiro já saiu
+ * de verdade, então não faz sentido nascer pendente. Mantém a data real da
+ * saída (não "agora"), igual a `payPayable`, mas essa recebe a data de fora
+ * em vez de assumir o momento do clique.
+ */
+export async function createPaidPayable(input: {
+  supplierId: string;
+  categoryId: string;
+  title: string;
+  amount: number;
+  occurredAt: string; // YYYY-MM-DD
+  notes: string | null;
+}): Promise<{ id: string }> {
+  const supabase = getSupabaseServerClient();
+  const paidAtIso = new Date(`${input.occurredAt}T12:00:00`).toISOString();
+
+  const { data, error } = await supabase
+    .from("payables")
+    .insert({
+      supplier_id: input.supplierId,
+      category_id: input.categoryId,
+      title: input.title,
+      amount: input.amount,
+      paid_amount: input.amount,
+      due_date: input.occurredAt,
+      status: "paid",
+      paid_at: paidAtIso,
+      status_changed_at: nowIso(),
+      notes: input.notes,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Falha ao lançar conta a partir do extrato: ${error.message}`);
+
+  const supplier = await getSupplier(input.supplierId);
+  await recordMovement({
+    direction: "out",
+    amount: input.amount,
+    kind: "payable",
+    description: `${input.title} — ${supplier?.name ?? "fornecedor"}`,
+    counterpart: supplier?.name ?? null,
+    sourceType: "payable",
+    sourceId: data.id,
+    occurredAt: paidAtIso,
+  });
+
+  return { id: data.id };
+}
+
 /** Desfaz o pagamento por inteiro — volta a conta para pendente e zera o valor pago. */
 export async function unpayPayable(id: string): Promise<void> {
   // Estorna TODOS os pagamentos vivos desta conta — inclusive os parciais.
