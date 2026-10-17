@@ -15,6 +15,7 @@ import { ManualIncomeForm } from "./ManualIncomeForm";
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const dynamic = "force-dynamic";
 
@@ -186,6 +187,60 @@ export default async function CaixaPage({
           <QuickAction href="/financeiro/pagar" label="A pagar" icon={Receipt} />
         </div>
       </HeroCard>
+
+      {/* Conciliação — soma dos bancos conectados vs. o que o controle interno calcula */}
+      {liveBalances.length > 0 &&
+        (() => {
+          const connected = liveBalances.filter((b) => !b.error);
+          const withError = liveBalances.length - connected.length;
+          const bancosTotal = round2(connected.reduce((s, b) => s + b.balance, 0));
+          const diff = round2(bancosTotal - saldo);
+          const bate = Math.abs(diff) <= 0.01;
+          return (
+            <section className="rounded-3xl bg-card shadow-card p-6 mt-4 mb-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-bold text-ink">Conciliação bancária</h2>
+                  <p className="text-xs text-secondary-ink">
+                    Soma dos bancos conectados vs. saldo do controle financeiro
+                  </p>
+                </div>
+                <p
+                  className={`text-xl font-extrabold tabular-nums sm:text-2xl ${
+                    bate ? "text-paid-ink" : "text-overdue-ink"
+                  }`}
+                >
+                  {bate ? "Bate certinho" : `${diff > 0 ? "+" : "−"} ${currency.format(Math.abs(diff))}`}
+                </p>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-hairline p-3.5">
+                  <p className="text-[11px] text-secondary-ink">Bancos conectados</p>
+                  <p className="text-base font-bold tabular-nums text-ink">{currency.format(bancosTotal)}</p>
+                </div>
+                <div className="rounded-2xl border border-hairline p-3.5">
+                  <p className="text-[11px] text-secondary-ink">Controle financeiro</p>
+                  <p className="text-base font-bold tabular-nums text-ink">{currency.format(saldo)}</p>
+                </div>
+                <div className="rounded-2xl border border-hairline p-3.5">
+                  <p className="text-[11px] text-secondary-ink">Diferença</p>
+                  <p
+                    className={`text-base font-bold tabular-nums ${
+                      bate ? "text-paid-ink" : "text-overdue-ink"
+                    }`}
+                  >
+                    {bate ? currency.format(0) : `${diff > 0 ? "+" : "−"} ${currency.format(Math.abs(diff))}`}
+                  </p>
+                </div>
+              </div>
+              {withError > 0 && (
+                <p className="mt-3 text-[11px] text-secondary-ink">
+                  {withError} conta{withError === 1 ? "" : "s"} sem saldo disponível agora — não entra{withError === 1 ? "" : "m"} nessa soma.
+                </p>
+              )}
+            </section>
+          );
+        })()}
 
         {/* Previsto — conceito diferente de saldo, rotulado pra não confundir */}
         <div className="mb-6 mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
