@@ -2,7 +2,7 @@ import type { Viewport } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { SignOut } from "@phosphor-icons/react/dist/ssr";
+import { Gear, SignOut } from "@phosphor-icons/react/dist/ssr";
 import { getSessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/logout/actions";
 import {
@@ -64,6 +64,13 @@ export default async function FinanceiroLayout({ children }: { children: React.R
 
         <div className="mt-auto flex flex-col gap-1 border-t border-hairline pt-4">
           <Link
+            href="/financeiro/config"
+            className="flex h-10 items-center gap-2 rounded-xl px-3 text-sm text-muted transition-colors hover:bg-neutral-bg hover:text-ink"
+          >
+            <Gear size={18} aria-hidden="true" />
+            Configurações
+          </Link>
+          <Link
             href="/painel"
             className="flex h-10 items-center rounded-xl px-3 text-sm text-muted transition-colors hover:bg-neutral-bg hover:text-ink"
           >
@@ -96,6 +103,13 @@ export default async function FinanceiroLayout({ children }: { children: React.R
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Link
+            href="/financeiro/config"
+            aria-label="Configurações"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-muted shadow-card transition-colors active:bg-neutral-bg"
+          >
+            <Gear size={20} aria-hidden="true" />
+          </Link>
           <form action={logoutAction}>
             <button
               type="submit"
