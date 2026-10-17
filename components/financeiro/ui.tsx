@@ -147,6 +147,7 @@ export function HeroCard({
 const BANK_LOGOS: Record<string, { label: string; src: string }> = {
   santander: { label: "Santander", src: "/bank-logos/santander.png" },
   c6: { label: "C6 Bank", src: "/bank-logos/c6.svg" },
+  bandeirado: { label: "C6 Bank", src: "/bank-logos/c6.svg" },
 };
 
 function detectBank(name: string): { label: string; src: string } | null {

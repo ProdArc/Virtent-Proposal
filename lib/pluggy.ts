@@ -82,7 +82,10 @@ export interface PluggyAccount {
   id: string;
   itemId: string;
   name: string;
+  /** Nome comercial do produto (ex: "C6 BUSINESS") — mais legível que `name`, que em cartão vem tipo "BANDEIRADO". */
+  marketingName: string | null;
   number: string | null;
+  /** "BANK" (conta corrente/poupança, tem saldo em dinheiro) ou "CREDIT" (cartão, não tem). */
   type: string;
   balance: number;
   // Santander (e outros) varrem o saldo da conta corrente pra uma aplicação

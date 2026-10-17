@@ -38,7 +38,7 @@ export async function saveConnection(itemId: string): Promise<{ accountsSaved: n
     pluggy_item_id: itemId,
     pluggy_account_id: a.id,
     institution_name: item.connectorName ?? "Banco conectado",
-    account_name: a.name,
+    account_name: (a.marketingName ?? a.name).trim(),
     updated_at: new Date().toISOString(),
   }));
 
@@ -106,6 +106,9 @@ export async function getLiveBalances(): Promise<LiveBalance[]> {
         const accounts = await fetchAccounts(conn.pluggy_item_id);
         const account = accounts.find((a) => a.id === conn.pluggy_account_id);
         if (!account) throw new Error("Conta não encontrada na Pluggy.");
+        if (account.type !== "BANK") {
+          throw new Error("Conectado como cartão/produto sem saldo em conta — conecte a conta corrente pra ver o saldo real.");
+        }
         const invested = account.bankData?.automaticallyInvestedBalance ?? 0;
         return {
           connectionId: conn.id,
