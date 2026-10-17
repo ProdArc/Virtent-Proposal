@@ -4,6 +4,13 @@ import { useState } from "react";
 import { PluggyConnect } from "react-pluggy-connect";
 import { createConnectTokenAction, saveConnectionAction } from "./actions";
 
+// Conector "MeuPluggy" (meu.pluggy.ai) — id fixo no catálogo da Pluggy,
+// confirmado via GET /connectors?name=MeuPluggy. É o plano gratuito: conecta
+// contas do MESMO titular via OAuth, sem entrar no plano pago "Dados" (esse
+// é só pra conectar contas de terceiros/clientes). Travar nele aqui evita
+// que o widget mostre bancos "de verdade", que cairiam no plano pago.
+const MEU_PLUGGY_CONNECTOR_ID = 200;
+
 /**
  * Abre o widget oficial da Pluggy pra conectar uma conta bancária. O token
  * de conexão é gerado no servidor (precisa do CLIENT_SECRET, que nunca vai
@@ -36,7 +43,7 @@ export function ConnectBankButton() {
         disabled={loading || saving}
         className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Abrindo..." : saving ? "Salvando conta..." : "Conectar conta bancária"}
+        {loading ? "Abrindo..." : saving ? "Salvando conta..." : "Conectar via Meu Pluggy (grátis)"}
       </button>
 
       {error && (
@@ -48,7 +55,7 @@ export function ConnectBankButton() {
       {token && (
         <PluggyConnect
           connectToken={token}
-          includeSandbox={process.env.NODE_ENV !== "production"}
+          connectorIds={[MEU_PLUGGY_CONNECTOR_ID]}
           onSuccess={async ({ item }) => {
             setToken(null);
             setSaving(true);

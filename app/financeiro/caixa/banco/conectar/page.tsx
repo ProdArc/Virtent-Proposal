@@ -42,8 +42,22 @@ export default async function ConectarBancoPage() {
       <PageHeader
         back={{ href: "/financeiro/caixa/banco", label: "Voltar" }}
         title="Conectar banco"
-        subtitle="Suas credenciais do banco nunca passam pelo nosso servidor — o widget abaixo é da própria Pluggy."
+        subtitle="Suas credenciais do banco nunca passam pelo nosso servidor — a conexão é feita pelo Meu Pluggy (meu.pluggy.ai), o plano gratuito da Pluggy."
       />
+
+      <div className="mb-6 rounded-2xl bg-surface p-4 text-xs text-secondary-ink">
+        <p className="mb-1 font-semibold text-ink">Antes do primeiro uso (só 1 vez):</p>
+        <ol className="list-decimal space-y-0.5 pl-4">
+          <li>
+            Entre em{" "}
+            <a href="https://dashboard.pluggy.ai" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-ink hover:text-brand-ink-hover">
+              dashboard.pluggy.ai
+            </a>{" "}
+            com a conta que gerou o Client ID/Secret deste projeto.
+          </li>
+          <li>Abra a aplicação → aba de conectores → habilite o conector <strong>MeuPluggy</strong>.</li>
+        </ol>
+      </div>
 
       <div className="mb-6">
         <ConnectBankButton />
