@@ -6,7 +6,7 @@ import { remainingAmount } from "@/lib/payables-status";
 import { daysUntil, todayIso } from "@/lib/urgency";
 import { Bank, ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
 import { getLiveBalances, type LiveBalance } from "@/lib/pluggy-connections";
-import { HeroCard, PageHeader, QuickAction } from "@/components/financeiro/ui";
+import { BankBalanceCard, HeroCard, PageHeader, QuickAction } from "@/components/financeiro/ui";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
@@ -166,35 +166,23 @@ export default async function CaixaPage({
         }
         side={
           liveBalances.length > 0 ? (
-            <div className="flex flex-col gap-3 sm:items-end">
+            <div className="flex flex-col gap-2.5">
               {liveBalances.map((b) => {
                 const diff = round2(b.balance - saldo);
                 return (
-                  <div key={b.connectionId} className="w-full text-left sm:text-right">
-                    <p className="text-xs font-semibold text-secondary-ink">
-                      Saldo real — {b.institutionName}
-                      {b.accountName ? ` (${b.accountName})` : ""}
-                    </p>
-                    {b.error ? (
-                      <p className="mt-1 text-xs text-overdue-ink">{b.error}</p>
-                    ) : (
-                      <>
-                        <p className="mt-0.5 text-xl font-extrabold tabular-nums text-ink">
-                          {currency.format(b.balance)}
-                        </p>
-                        {Math.abs(diff) > 0.01 && (
-                          <p
-                            className={`mt-1 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                              diff > 0 ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
-                            }`}
-                          >
-                            {diff > 0 ? "+" : ""}
-                            {currency.format(diff)} vs. controle
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
+                  <BankBalanceCard
+                    key={b.connectionId}
+                    name={b.accountName ?? b.institutionName}
+                    caption={`Saldo real · ${b.institutionName}`}
+                    value={currency.format(b.balance)}
+                    error={b.error}
+                    diffLabel={
+                      Math.abs(diff) > 0.01
+                        ? `${diff > 0 ? "+" : ""}${currency.format(diff)} vs. controle`
+                        : null
+                    }
+                    diffPositive={diff > 0}
+                  />
                 );
               })}
             </div>

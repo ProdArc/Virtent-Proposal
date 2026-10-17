@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
+import { Bank, CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import type { Icon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
@@ -140,6 +140,85 @@ export function HeroCard({
         {side && <div className="w-full shrink-0 sm:w-72">{side}</div>}
       </div>
     </section>
+  );
+}
+
+/**
+ * Cor de identidade do banco — a Pluggy não devolve logo/cor da instituição
+ * real quando a conexão é via "Meu Pluggy" (conector genérico, não o banco
+ * em si), então em vez de um logo falso usa a cor de marca conhecida do
+ * banco por trás de um ícone, pelo nome da conta/instituição.
+ */
+const BANK_ACCENTS: Record<string, { bg: string; fg: string }> = {
+  santander: { bg: "#EC0000", fg: "#ffffff" },
+  itau: { bg: "#EC7000", fg: "#ffffff" },
+  itaú: { bg: "#EC7000", fg: "#ffffff" },
+  bradesco: { bg: "#CC092F", fg: "#ffffff" },
+  "banco do brasil": { bg: "#FADB00", fg: "#003087" },
+  caixa: { bg: "#0070B8", fg: "#ffffff" },
+  nubank: { bg: "#820AD1", fg: "#ffffff" },
+  inter: { bg: "#FF7A00", fg: "#ffffff" },
+  sicoob: { bg: "#00AE9D", fg: "#ffffff" },
+  sicredi: { bg: "#6CB33F", fg: "#ffffff" },
+  c6: { bg: "#242424", fg: "#ffffff" },
+};
+
+function bankAccent(name: string): { bg: string; fg: string } | null {
+  const key = name.toLowerCase();
+  for (const [needle, accent] of Object.entries(BANK_ACCENTS)) {
+    if (key.includes(needle)) return accent;
+  }
+  return null;
+}
+
+/** Cartão de saldo real de uma conta bancária conectada via Open Finance. */
+export function BankBalanceCard({
+  name,
+  caption,
+  value,
+  diffLabel,
+  diffPositive,
+  error,
+}: {
+  name: string;
+  caption?: string;
+  value?: string;
+  diffLabel?: string | null;
+  diffPositive?: boolean;
+  error?: string;
+}) {
+  const accent = bankAccent(name);
+  return (
+    <div className="flex items-start gap-3 rounded-2xl bg-neutral-bg p-3.5">
+      <span
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+          accent ? "" : "bg-brand-light text-brand-ink"
+        }`}
+        style={accent ? { backgroundColor: accent.bg, color: accent.fg } : undefined}
+      >
+        <Bank size={20} weight="fill" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-bold leading-tight text-ink">{name}</p>
+        {caption && <p className="text-[11px] text-secondary-ink">{caption}</p>}
+        {error ? (
+          <p className="mt-1 text-[11px] text-overdue-ink">{error}</p>
+        ) : (
+          <>
+            <p className="mt-1 text-lg font-extrabold tabular-nums leading-none text-ink">{value}</p>
+            {diffLabel && (
+              <p
+                className={`mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold ${
+                  diffPositive ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
+                }`}
+              >
+                {diffLabel}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
