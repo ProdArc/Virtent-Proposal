@@ -29,6 +29,7 @@ export interface CashMovementRow {
   source_type: SourceType | null;
   source_id: string | null;
   reverses_id: string | null;
+  bank_transaction_id: string | null;
   created_at: string;
 }
 
@@ -75,27 +76,34 @@ function isMissingLedger(error: { code?: string; message?: string } | null): boo
  * Registra uma movimentação. Ignora silenciosamente valor zero (uma baixa de
  * R$ 0 não é dinheiro se movendo) e violação da trava de duplicidade — que
  * significa "essa baixa já foi lançada", não um erro a propagar para a UI.
+ * Devolve o id da linha criada (ou null se nada foi criado) — usado pra
+ * conciliar a movimentação com uma transação bancária logo em seguida.
  */
-export async function recordMovement(m: NewMovement): Promise<void> {
+export async function recordMovement(m: NewMovement): Promise<string | null> {
   const amount = round2(Math.abs(m.amount));
-  if (amount <= 0) return;
+  if (amount <= 0) return null;
 
   const supabase = getSupabaseServerClient();
-  const { error } = await supabase.from("cash_movements").insert({
-    direction: m.direction,
-    amount,
-    kind: m.kind,
-    description: m.description,
-    counterpart: m.counterpart ?? null,
-    source_type: m.sourceType ?? null,
-    source_id: m.sourceId ?? null,
-    occurred_at: m.occurredAt ?? new Date().toISOString(),
-  });
+  const { data, error } = await supabase
+    .from("cash_movements")
+    .insert({
+      direction: m.direction,
+      amount,
+      kind: m.kind,
+      description: m.description,
+      counterpart: m.counterpart ?? null,
+      source_type: m.sourceType ?? null,
+      source_id: m.sourceId ?? null,
+      occurred_at: m.occurredAt ?? new Date().toISOString(),
+    })
+    .select("id")
+    .maybeSingle();
 
   // 23505 = unique_violation: a movimentação dessa baixa já existe.
   if (error && error.code !== "23505" && !isMissingLedger(error)) {
     throw new Error(`Falha ao registrar movimentação de caixa: ${error.message}`);
   }
+  return data?.id ?? null;
 }
 
 /** Movimentações vivas (não estornadas) de uma origem. */
@@ -274,4 +282,102 @@ export async function setOpeningBalance(amount: number, dateIso: string): Promis
     : await supabase.from("cash_movements").insert(payload);
 
   if (error) throw new Error(`Falha ao salvar saldo inicial: ${error.message}`);
+}
+
+// ── Conciliação com o extrato bancário ──────────────────────────────────
+
+/**
+ * Candidatas a conciliação: movimentações que ainda não foram casadas com
+ * nenhuma transação bancária, mesma direção e valor exato (PIX não tem
+ * diferença de centavos), dentro de uma janela de dias em torno da data real
+ * — a baixa no sistema pode ter sido registrada um ou dois dias antes/depois
+ * do banco processar. "opening" fica de fora: saldo inicial não é uma
+ * transação real pra conciliar.
+ */
+export async function findReconciliationCandidates(
+  direction: Direction,
+  amount: number,
+  occurredAtIso: string,
+  windowDays = 5
+): Promise<CashMovementRow[]> {
+  const supabase = getSupabaseServerClient();
+  const center = new Date(occurredAtIso);
+  const from = new Date(center.getTime() - windowDays * 86400000).toISOString();
+  const to = new Date(center.getTime() + windowDays * 86400000).toISOString();
+
+  const { data, error } = await supabase
+    .from("cash_movements")
+    .select("*")
+    .eq("direction", direction)
+    .eq("amount", round2(Math.abs(amount)))
+    .is("bank_transaction_id", null)
+    .is("reverses_id", null)
+    .neq("kind", "opening")
+    .gte("occurred_at", from)
+    .lte("occurred_at", to)
+    .order("occurred_at", { ascending: false });
+
+  if (error) {
+    if (isMissingLedger(error)) return [];
+    throw new Error(`Falha ao buscar movimentações pra conciliar: ${error.message}`);
+  }
+
+  // Nunca sugere uma movimentação que já foi estornada (mesmo sem reverses_id ela mesma).
+  const rows = (data ?? []) as CashMovementRow[];
+  const { data: reversals } = await supabase
+    .from("cash_movements")
+    .select("reverses_id")
+    .not("reverses_id", "is", null)
+    .in("reverses_id", rows.map((r) => r.id));
+  const reversedIds = new Set((reversals ?? []).map((r) => r.reverses_id as string));
+
+  return rows.filter((r) => !reversedIds.has(r.id));
+}
+
+/**
+ * Mesmo universo de `findReconciliationCandidates`, mas pra todas as
+ * movimentações de uma vez (uma consulta, não uma por transação pendente) —
+ * usado pela fila de triagem, que pode ter dezenas de linhas na tela ao
+ * mesmo tempo. Quem chama filtra por valor/direção/data em memória.
+ */
+export async function listUnreconciledMovements(): Promise<CashMovementRow[]> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("cash_movements")
+    .select("*")
+    .is("bank_transaction_id", null)
+    .is("reverses_id", null)
+    .neq("kind", "opening");
+
+  if (error) {
+    if (isMissingLedger(error)) return [];
+    throw new Error(`Falha ao buscar movimentações pra conciliar: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as CashMovementRow[];
+  if (rows.length === 0) return rows;
+
+  const { data: reversals, error: revError } = await supabase
+    .from("cash_movements")
+    .select("reverses_id")
+    .not("reverses_id", "is", null)
+    .in("reverses_id", rows.map((r) => r.id));
+  if (revError) throw new Error(`Falha ao verificar estornos: ${revError.message}`);
+  const reversedIds = new Set((reversals ?? []).map((r) => r.reverses_id as string));
+
+  return rows.filter((r) => !reversedIds.has(r.id));
+}
+
+/** Casa uma movimentação já existente com a transação bancária que a comprova. */
+export async function setCashMovementBankTransaction(
+  cashMovementId: string,
+  bankTransactionId: string
+): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("cash_movements")
+    .update({ bank_transaction_id: bankTransactionId })
+    .eq("id", cashMovementId)
+    .is("bank_transaction_id", null);
+  if (error) throw new Error(`Falha ao conciliar movimentação: ${error.message}`);
 }

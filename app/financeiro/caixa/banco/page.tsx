@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { Plug } from "@phosphor-icons/react/dist/ssr";
-import { listPendingBankTransactions } from "@/lib/bank-transactions";
+import { findMatchesForPendingTransactions, listPendingBankTransactions, type BankTransactionRow } from "@/lib/bank-transactions";
 import { listCategories, listSuppliers } from "@/lib/payables";
+import type { CashMovementRow } from "@/lib/cash";
 import { btnSecondary, ConfigError, EmptyState, PageHeader } from "@/components/financeiro/ui";
 import { BankTransactionCard } from "./BankTransactionCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function BankTransactionsPage() {
-  let pending: Awaited<ReturnType<typeof listPendingBankTransactions>> = [];
+  let pending: BankTransactionRow[] = [];
+  let matchesByTx: Record<string, CashMovementRow[]> = {};
   let suppliers: string[] = [];
   let categories: string[] = [];
   let configError: string | null = null;
@@ -22,6 +24,8 @@ export default async function BankTransactionsPage() {
     pending = tx;
     suppliers = s.map((x) => x.name);
     categories = c.map((x) => x.name);
+
+    matchesByTx = await findMatchesForPendingTransactions(tx);
   } catch (err) {
     configError = err instanceof Error ? err.message : "Erro ao carregar o extrato bancário.";
   }
@@ -57,7 +61,13 @@ export default async function BankTransactionsPage() {
       ) : (
         <div className="rounded-3xl bg-card shadow-card overflow-hidden">
           {pending.map((tx) => (
-            <BankTransactionCard key={tx.id} tx={tx} suppliers={suppliers} categories={categories} />
+            <BankTransactionCard
+              key={tx.id}
+              tx={tx}
+              matches={matchesByTx[tx.id] ?? []}
+              suppliers={suppliers}
+              categories={categories}
+            />
           ))}
         </div>
       )}

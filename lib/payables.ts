@@ -421,7 +421,7 @@ export async function createPaidPayable(input: {
   amount: number;
   occurredAt: string; // YYYY-MM-DD
   notes: string | null;
-}): Promise<{ id: string }> {
+}): Promise<{ id: string; cashMovementId: string | null }> {
   const supabase = getSupabaseServerClient();
   const paidAtIso = new Date(`${input.occurredAt}T12:00:00`).toISOString();
 
@@ -444,7 +444,7 @@ export async function createPaidPayable(input: {
   if (error) throw new Error(`Falha ao lançar conta a partir do extrato: ${error.message}`);
 
   const supplier = await getSupplier(input.supplierId);
-  await recordMovement({
+  const cashMovementId = await recordMovement({
     direction: "out",
     amount: input.amount,
     kind: "payable",
@@ -455,7 +455,7 @@ export async function createPaidPayable(input: {
     occurredAt: paidAtIso,
   });
 
-  return { id: data.id };
+  return { id: data.id, cashMovementId };
 }
 
 /** Desfaz o pagamento por inteiro — volta a conta para pendente e zera o valor pago. */

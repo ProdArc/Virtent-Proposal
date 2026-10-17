@@ -84,6 +84,11 @@ export interface PluggyAccount {
   name: string;
   number: string | null;
   type: string;
+  balance: number;
+  // Santander (e outros) varrem o saldo da conta corrente pra uma aplicação
+  // automática todo dia — "balance" sozinho mostraria quase sempre perto de
+  // zero, mesmo com dinheiro de verdade na conta.
+  bankData?: { automaticallyInvestedBalance?: number } | null;
 }
 
 /** Contas de um item recém-conectado pelo widget — o widget só devolve o item.id, as contas vêm daqui. */

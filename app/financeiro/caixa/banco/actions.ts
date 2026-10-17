@@ -7,6 +7,7 @@ import {
   dismissBankTransaction,
   linkBankTransactionAsManualIncome,
   linkBankTransactionAsPayable,
+  reconcileBankTransaction,
 } from "@/lib/bank-transactions";
 
 async function assertAuthorized(): Promise<string | null> {
@@ -69,6 +70,19 @@ export async function linkAsIncomeAction(formData: FormData): Promise<void> {
   });
 
   revalidateAll();
+}
+
+export async function reconcileAction(formData: FormData): Promise<void> {
+  const authError = await assertAuthorized();
+  if (authError) throw new Error(authError);
+
+  const bankTxId = String(formData.get("bankTxId") || "");
+  const cashMovementId = String(formData.get("cashMovementId") || "");
+  if (!bankTxId || !cashMovementId) throw new Error("Seleção inválida.");
+
+  await reconcileBankTransaction(bankTxId, cashMovementId);
+  revalidateAll();
+  revalidatePath("/financeiro/caixa/extrato");
 }
 
 export async function dismissBankTransactionAction(formData: FormData): Promise<void> {

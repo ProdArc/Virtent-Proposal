@@ -1,8 +1,14 @@
 import type { BankTransactionRow } from "@/lib/bank-transactions";
+import { KIND_LABEL, type CashMovementRow } from "@/lib/cash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { ConfirmButton } from "@/app/financeiro/[id]/ConfirmButton";
 import { inputClass } from "@/components/financeiro/ui";
-import { dismissBankTransactionAction, linkAsIncomeAction, linkAsPayableAction } from "./actions";
+import {
+  dismissBankTransactionAction,
+  linkAsIncomeAction,
+  linkAsPayableAction,
+  reconcileAction,
+} from "./actions";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dateFmt = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR");
@@ -17,10 +23,12 @@ const LABEL = "block text-xs font-semibold text-neutral-ink mb-1.5";
  */
 export function BankTransactionCard({
   tx,
+  matches,
   suppliers,
   categories,
 }: {
   tx: BankTransactionRow;
+  matches: CashMovementRow[];
   suppliers: string[];
   categories: string[];
 }) {
@@ -50,7 +58,14 @@ export function BankTransactionCard({
           <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink">
             {tx.description}
           </span>
-          <span className="mt-0.5 block text-xs text-secondary-ink">{dateFmt(tx.occurred_at)}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-secondary-ink">
+            {dateFmt(tx.occurred_at)}
+            {matches.length > 0 && (
+              <span className="rounded-full bg-paid-bg px-2 py-0.5 text-[10.5px] font-semibold text-paid-ink">
+                já lançado — conciliar
+              </span>
+            )}
+          </span>
         </span>
 
         <span
@@ -64,6 +79,39 @@ export function BankTransactionCard({
       </summary>
 
       <div className="border-t border-hairline px-4 py-4 sm:px-5">
+        {matches.length > 0 && (
+          <div className="mb-4 rounded-2xl bg-paid-bg p-3">
+            <p className="mb-2 text-xs font-semibold text-paid-ink">
+              Já existe um lançamento com esse valor e direção — provavelmente é isso:
+            </p>
+            <div className="flex flex-col gap-2">
+              {matches.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-card px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{m.description}</p>
+                    <p className="text-xs text-secondary-ink">
+                      {dateFmt(m.occurred_at.slice(0, 10))} · {KIND_LABEL[m.kind]}
+                    </p>
+                  </div>
+                  <form action={reconcileAction} className="shrink-0">
+                    <input type="hidden" name="bankTxId" value={tx.id} />
+                    <input type="hidden" name="cashMovementId" value={m.id} />
+                    <SubmitButton
+                      pendingLabel="Conciliando..."
+                      className="inline-flex h-9 items-center justify-center rounded-full bg-paid-ink px-3 text-xs font-semibold text-white transition-colors hover:opacity-90"
+                    >
+                      Conciliar
+                    </SubmitButton>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isIn ? (
           <form action={linkAsIncomeAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input type="hidden" name="bankTxId" value={tx.id} />

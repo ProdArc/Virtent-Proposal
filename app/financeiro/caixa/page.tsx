@@ -5,7 +5,8 @@ import { listPayables } from "@/lib/payables";
 import { remainingAmount } from "@/lib/payables-status";
 import { daysUntil, todayIso } from "@/lib/urgency";
 import { Bank, ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
-import { HeroCard, PageHeader, QuickAction } from "@/components/financeiro/ui";
+import { getLiveBalances, type LiveBalance } from "@/lib/pluggy-connections";
+import { HeroCard, Panel, PageHeader, QuickAction } from "@/components/financeiro/ui";
 import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
@@ -14,6 +15,7 @@ import { ManualIncomeForm } from "./ManualIncomeForm";
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +139,16 @@ export default async function CaixaPage({
 
   const saldo = balance.balance;
 
+  // Saldo real do banco conectado, pra comparar com o calculado pelo
+  // controle interno. Não bloqueia a página: sem conexão ou com a Pluggy
+  // fora do ar, essa seção simplesmente não aparece.
+  let liveBalances: LiveBalance[] = [];
+  try {
+    liveBalances = await getLiveBalances();
+  } catch {
+    liveBalances = [];
+  }
+
   return (
     <>
       <PageHeader title="Caixa" subtitle="Dinheiro que já entrou e saiu de fato" />
@@ -161,6 +173,43 @@ export default async function CaixaPage({
           <QuickAction href="/financeiro/pagar" label="A pagar" icon={Receipt} />
         </div>
       </HeroCard>
+
+      {liveBalances.length > 0 && (
+        <div className="mb-6 mt-4 flex flex-col gap-3">
+          {liveBalances.map((b) => {
+            const diff = round2(b.balance - saldo);
+            return (
+              <Panel key={b.connectionId}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-secondary-ink">
+                      Saldo real — {b.institutionName}
+                      {b.accountName ? ` (${b.accountName})` : ""}
+                    </p>
+                    {b.error ? (
+                      <p className="mt-1 text-sm text-overdue-ink">{b.error}</p>
+                    ) : (
+                      <p className="mt-0.5 text-xl font-extrabold tabular-nums text-ink">
+                        {currency.format(b.balance)}
+                      </p>
+                    )}
+                  </div>
+                  {!b.error && Math.abs(diff) > 0.01 && (
+                    <p
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                        diff > 0 ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
+                      }`}
+                    >
+                      {diff > 0 ? "+" : ""}
+                      {currency.format(diff)} vs. controle
+                    </p>
+                  )}
+                </div>
+              </Panel>
+            );
+          })}
+        </div>
+      )}
 
         {/* Previsto — conceito diferente de saldo, rotulado pra não confundir */}
         <div className="mb-6 mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

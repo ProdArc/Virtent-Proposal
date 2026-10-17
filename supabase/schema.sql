@@ -234,7 +234,7 @@ create table if not exists bank_transactions (
   category text,
   note text,
   status text not null default 'pending' check (status in ('pending', 'linked', 'dismissed')),
-  linked_type text check (linked_type in ('payable', 'manual_income')),
+  linked_type text check (linked_type in ('payable', 'manual_income', 'reconciled')),
   linked_id uuid,
   raw jsonb,
   created_at timestamptz not null default now(),
@@ -255,3 +255,10 @@ create table if not exists pluggy_connections (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Concilia uma movimentação de caixa com a transação real do extrato
+-- bancário que corresponde a ela.
+alter table cash_movements add column if not exists bank_transaction_id uuid references bank_transactions(id) on delete set null;
+create unique index if not exists cash_movements_bank_transaction_unique
+  on cash_movements (bank_transaction_id)
+  where bank_transaction_id is not null;

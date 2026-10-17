@@ -1,6 +1,12 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { recordMovement } from "@/lib/cash";
+import {
+  findReconciliationCandidates,
+  listUnreconciledMovements,
+  recordMovement,
+  setCashMovementBankTransaction,
+  type CashMovementRow,
+} from "@/lib/cash";
 import { createPaidPayable } from "@/lib/payables";
 import type { PluggyTransaction } from "@/lib/pluggy";
 
@@ -12,7 +18,7 @@ import type { PluggyTransaction } from "@/lib/pluggy";
  */
 
 export type BankTxStatus = "pending" | "linked" | "dismissed";
-export type BankTxLinkedType = "payable" | "manual_income";
+export type BankTxLinkedType = "payable" | "manual_income" | "reconciled";
 
 export interface BankTransactionRow {
   id: string;
@@ -120,7 +126,7 @@ export async function linkBankTransactionAsPayable(
   if (tx.direction !== "out") throw new Error("Essa movimentação é uma entrada, não uma saída.");
 
   await saveClassification(bankTxId, input.categoryLabel, input.note);
-  const { id: payableId } = await createPaidPayable({
+  const { id: payableId, cashMovementId } = await createPaidPayable({
     supplierId: input.supplierId,
     categoryId: input.categoryId,
     title: input.title || input.categoryLabel,
@@ -128,6 +134,7 @@ export async function linkBankTransactionAsPayable(
     occurredAt: tx.occurred_at,
     notes: input.note,
   });
+  if (cashMovementId) await setCashMovementBankTransaction(cashMovementId, bankTxId);
   await markLinked(bankTxId, "payable", payableId);
   return { payableId };
 }
@@ -143,7 +150,7 @@ export async function linkBankTransactionAsManualIncome(
   if (tx.direction !== "in") throw new Error("Essa movimentação é uma saída, não uma entrada.");
 
   await saveClassification(bankTxId, input.category, input.note);
-  await recordMovement({
+  const cashMovementId = await recordMovement({
     direction: "in",
     amount: Number(tx.amount),
     kind: "manual",
@@ -153,7 +160,69 @@ export async function linkBankTransactionAsManualIncome(
     sourceId: null,
     occurredAt: new Date(`${tx.occurred_at}T12:00:00`).toISOString(),
   });
-  await markLinked(bankTxId, "manual_income", null);
+  if (cashMovementId) await setCashMovementBankTransaction(cashMovementId, bankTxId);
+  await markLinked(bankTxId, "manual_income", cashMovementId);
+}
+
+/** Movimentações já existentes que podem ser esta mesma transação — mesma direção, mesmo valor, data próxima. */
+export async function findMatchesForBankTransaction(bankTxId: string): Promise<CashMovementRow[]> {
+  const tx = await getBankTransaction(bankTxId);
+  if (!tx || tx.status !== "pending") return [];
+  return findReconciliationCandidates(tx.direction, Number(tx.amount), tx.occurred_at);
+}
+
+const RECONCILE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Mesma lógica de `findMatchesForBankTransaction`, mas pra todas as
+ * pendentes de uma vez — 1 consulta no banco (via `listUnreconciledMovements`)
+ * em vez de 1 por linha da fila de triagem, que fica lento com dezenas de
+ * transações na tela.
+ */
+export async function findMatchesForPendingTransactions(
+  pending: BankTransactionRow[]
+): Promise<Record<string, CashMovementRow[]>> {
+  if (pending.length === 0) return {};
+  const pool = await listUnreconciledMovements();
+
+  const result: Record<string, CashMovementRow[]> = {};
+  for (const tx of pending) {
+    const center = new Date(tx.occurred_at).getTime();
+    const amount = round2(Number(tx.amount));
+    result[tx.id] = pool
+      .filter(
+        (m) =>
+          m.direction === tx.direction &&
+          round2(Number(m.amount)) === amount &&
+          Math.abs(new Date(m.occurred_at).getTime() - center) <= RECONCILE_WINDOW_MS
+      )
+      .sort(
+        (a, b) =>
+          Math.abs(new Date(a.occurred_at).getTime() - center) -
+          Math.abs(new Date(b.occurred_at).getTime() - center)
+      );
+  }
+  return result;
+}
+
+/**
+ * Concilia a transação bancária com uma movimentação de caixa JÁ EXISTENTE
+ * (uma baixa feita antes de o extrato chegar) — em vez de criar uma conta a
+ * pagar ou entrada nova, só prova que a que já existe aconteceu de verdade.
+ */
+export async function reconcileBankTransaction(bankTxId: string, cashMovementId: string): Promise<void> {
+  const tx = await getBankTransaction(bankTxId);
+  if (!tx) throw new Error("Movimentação não encontrada.");
+  if (tx.status !== "pending") throw new Error("Essa movimentação já foi tratada.");
+
+  const candidates = await findReconciliationCandidates(tx.direction, Number(tx.amount), tx.occurred_at);
+  if (!candidates.some((c) => c.id === cashMovementId)) {
+    throw new Error("Esse lançamento não bate mais com a transação (valor, direção ou data mudaram).");
+  }
+
+  await setCashMovementBankTransaction(cashMovementId, bankTxId);
+  await markLinked(bankTxId, "reconciled", cashMovementId);
 }
 
 /** Pra quando a movimentação já está contabilizada por outro caminho (ex: PIX de mensalidade). */

@@ -84,3 +84,44 @@ export async function syncAllConnections(): Promise<{ accounts: number; transact
   }
   return { accounts: connections.length, transactions };
 }
+
+export interface LiveBalance {
+  connectionId: string;
+  institutionName: string;
+  accountName: string | null;
+  balance: number;
+  error?: string;
+}
+
+/**
+ * Saldo de verdade, buscado na hora direto do banco — pra comparar com o
+ * saldo calculado pelo controle interno (cash_balance). Uma conta falhar não
+ * derruba as outras; o chamador decide o que fazer com cada erro.
+ */
+export async function getLiveBalances(): Promise<LiveBalance[]> {
+  const connections = await listConnections();
+  return Promise.all(
+    connections.map(async (conn): Promise<LiveBalance> => {
+      try {
+        const accounts = await fetchAccounts(conn.pluggy_item_id);
+        const account = accounts.find((a) => a.id === conn.pluggy_account_id);
+        if (!account) throw new Error("Conta não encontrada na Pluggy.");
+        const invested = account.bankData?.automaticallyInvestedBalance ?? 0;
+        return {
+          connectionId: conn.id,
+          institutionName: conn.institution_name,
+          accountName: conn.account_name,
+          balance: Number(account.balance) + Number(invested),
+        };
+      } catch (err) {
+        return {
+          connectionId: conn.id,
+          institutionName: conn.institution_name,
+          accountName: conn.account_name,
+          balance: 0,
+          error: err instanceof Error ? err.message : "Falha ao buscar saldo.",
+        };
+      }
+    })
+  );
+}

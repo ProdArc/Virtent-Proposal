@@ -172,6 +172,11 @@ export default async function ExtratoPage({
                     <span className="mt-0.5 block text-xs text-secondary-ink">
                       {stamp(m.occurred_at)} · {KIND_LABEL[m.kind]}
                       {reversal && " · estorno"}
+                      {m.bank_transaction_id && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-paid-ink">
+                          · ✓ conciliado
+                        </span>
+                      )}
                     </span>
                   </span>
 
