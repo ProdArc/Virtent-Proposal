@@ -1,6 +1,6 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { fetchAccounts, fetchItem, fetchRecentTransactions } from "@/lib/pluggy";
+import { fetchAccounts, fetchInvestmentsTotal, fetchItem, fetchRecentTransactions } from "@/lib/pluggy";
 import { upsertBankTransactions } from "@/lib/bank-transactions";
 
 export interface PluggyConnectionRow {
@@ -9,6 +9,8 @@ export interface PluggyConnectionRow {
   pluggy_account_id: string;
   institution_name: string;
   account_name: string | null;
+  /** "BANK" (corrente/poupança) ou "CREDIT" (cartão) — ver migração 014. */
+  account_type: string;
   last_synced_at: string | null;
   created_at: string;
 }
@@ -39,6 +41,7 @@ export async function saveConnection(itemId: string): Promise<{ accountsSaved: n
     pluggy_account_id: a.id,
     institution_name: item.connectorName ?? "Banco conectado",
     account_name: (a.marketingName ?? a.name).trim(),
+    account_type: a.type,
     updated_at: new Date().toISOString(),
   }));
 
@@ -97,24 +100,36 @@ export interface LiveBalance {
  * Saldo de verdade, buscado na hora direto do banco — pra comparar com o
  * saldo calculado pelo controle interno (cash_balance). Uma conta falhar não
  * derruba as outras; o chamador decide o que fazer com cada erro.
+ *
+ * Só mostra contas do tipo "BANK" (corrente/poupança) — cartão de crédito não
+ * tem saldo em dinheiro pra mostrar aqui, então fica de fora em vez de virar
+ * um card de erro permanente.
+ *
+ * `bankData.automaticallyInvestedBalance` é inconsistente entre bancos: no
+ * Santander é dinheiro A MAIS que `balance` (conta zera, tudo vai pra uma
+ * aplicação automática); no C6 veio igual a `balance` (duplicaria a conta se
+ * somasse direto). Por isso soma só o que exceder o próprio saldo. Investimento
+ * de verdade (CDB etc.), que é outro produto, soma à parte via `/investments`.
  */
 export async function getLiveBalances(): Promise<LiveBalance[]> {
-  const connections = await listConnections();
-  return Promise.all(
+  const connections = (await listConnections()).filter((c) => c.account_type === "BANK");
+  const results = await Promise.all(
     connections.map(async (conn): Promise<LiveBalance> => {
       try {
         const accounts = await fetchAccounts(conn.pluggy_item_id);
         const account = accounts.find((a) => a.id === conn.pluggy_account_id);
         if (!account) throw new Error("Conta não encontrada na Pluggy.");
-        if (account.type !== "BANK") {
-          throw new Error("Conectado como cartão/produto sem saldo em conta — conecte a conta corrente pra ver o saldo real.");
-        }
-        const invested = account.bankData?.automaticallyInvestedBalance ?? 0;
+
+        const balance = Number(account.balance);
+        const reportedInvested = Number(account.bankData?.automaticallyInvestedBalance ?? balance);
+        const sweptExtra = Math.max(0, reportedInvested - balance);
+        const investments = await fetchInvestmentsTotal(conn.pluggy_item_id).catch(() => 0);
+
         return {
           connectionId: conn.id,
           institutionName: conn.institution_name,
           accountName: conn.account_name,
-          balance: Number(account.balance) + Number(invested),
+          balance: balance + sweptExtra + investments,
         };
       } catch (err) {
         return {
@@ -127,4 +142,5 @@ export async function getLiveBalances(): Promise<LiveBalance[]> {
       }
     })
   );
+  return results;
 }

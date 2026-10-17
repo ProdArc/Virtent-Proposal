@@ -102,6 +102,20 @@ export async function fetchAccounts(itemId: string): Promise<PluggyAccount[]> {
   return data.results;
 }
 
+/**
+ * Soma de investimentos de curto/médio prazo (CDB etc.) do item na Pluggy —
+ * dinheiro da empresa, mas em produto separado da conta corrente, então não
+ * aparece em `account.balance` nem em `bankData.automaticallyInvestedBalance`
+ * (campo que, dependendo do banco, ora é saldo extra, ora é so o próprio
+ * saldo duplicado — ver `lib/pluggy-connections.ts`).
+ */
+export async function fetchInvestmentsTotal(itemId: string): Promise<number> {
+  const data = await pluggyFetch<{ results: { balance: number }[] }>(
+    `/investments?itemId=${encodeURIComponent(itemId)}`
+  );
+  return data.results.reduce((sum, inv) => sum + Number(inv.balance), 0);
+}
+
 export interface PluggyTransaction {
   id: string;
   accountId: string;

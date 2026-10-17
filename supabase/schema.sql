@@ -251,6 +251,8 @@ create table if not exists pluggy_connections (
   pluggy_account_id text not null unique,
   institution_name text not null,
   account_name text,
+  -- "BANK" (corrente/poupança, tem saldo em dinheiro) ou "CREDIT" (cartão, não tem).
+  account_type text not null default 'BANK',
   last_synced_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
