@@ -15,7 +15,6 @@ import { ManualIncomeForm } from "./ManualIncomeForm";
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const dynamic = "force-dynamic";
 
@@ -167,24 +166,14 @@ export default async function CaixaPage({
         side={
           liveBalances.length > 0 ? (
             <div className="flex flex-col gap-2.5">
-              {liveBalances.map((b) => {
-                const diff = round2(b.balance - saldo);
-                return (
-                  <BankBalanceCard
-                    key={b.connectionId}
-                    name={b.accountName ?? b.institutionName}
-                    caption={`Saldo real · ${b.institutionName}`}
-                    value={currency.format(b.balance)}
-                    error={b.error}
-                    diffLabel={
-                      Math.abs(diff) > 0.01
-                        ? `${diff > 0 ? "+" : ""}${currency.format(diff)} vs. controle`
-                        : null
-                    }
-                    diffPositive={diff > 0}
-                  />
-                );
-              })}
+              {liveBalances.map((b) => (
+                <BankBalanceCard
+                  key={b.connectionId}
+                  name={b.accountName ?? b.institutionName}
+                  value={currency.format(b.balance)}
+                  error={b.error}
+                />
+              ))}
             </div>
           ) : undefined
         }

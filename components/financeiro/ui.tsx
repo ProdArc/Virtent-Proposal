@@ -143,81 +143,44 @@ export function HeroCard({
   );
 }
 
-/**
- * Cor de identidade do banco — a Pluggy não devolve logo/cor da instituição
- * real quando a conexão é via "Meu Pluggy" (conector genérico, não o banco
- * em si), então em vez de um logo falso usa a cor de marca conhecida do
- * banco por trás de um ícone, pelo nome da conta/instituição.
- */
-const BANK_ACCENTS: Record<string, { bg: string; fg: string }> = {
-  santander: { bg: "#EC0000", fg: "#ffffff" },
-  itau: { bg: "#EC7000", fg: "#ffffff" },
-  itaú: { bg: "#EC7000", fg: "#ffffff" },
-  bradesco: { bg: "#CC092F", fg: "#ffffff" },
-  "banco do brasil": { bg: "#FADB00", fg: "#003087" },
-  caixa: { bg: "#0070B8", fg: "#ffffff" },
-  nubank: { bg: "#820AD1", fg: "#ffffff" },
-  inter: { bg: "#FF7A00", fg: "#ffffff" },
-  sicoob: { bg: "#00AE9D", fg: "#ffffff" },
-  sicredi: { bg: "#6CB33F", fg: "#ffffff" },
-  c6: { bg: "#242424", fg: "#ffffff" },
+/** Banco identificado pelo nome da conta/instituição — logo real quando a gente tem, senão iniciais. */
+const BANK_LOGOS: Record<string, { label: string; src: string }> = {
+  santander: { label: "Santander", src: "/bank-logos/santander.png" },
+  c6: { label: "C6 Bank", src: "/bank-logos/c6.svg" },
 };
 
-function bankAccent(name: string): { bg: string; fg: string } | null {
+function detectBank(name: string): { label: string; src: string } | null {
   const key = name.toLowerCase();
-  for (const [needle, accent] of Object.entries(BANK_ACCENTS)) {
-    if (key.includes(needle)) return accent;
+  for (const [needle, info] of Object.entries(BANK_LOGOS)) {
+    if (key.includes(needle)) return info;
   }
   return null;
 }
 
-/** Cartão de saldo real de uma conta bancária conectada via Open Finance. */
-export function BankBalanceCard({
-  name,
-  caption,
-  value,
-  diffLabel,
-  diffPositive,
-  error,
-}: {
-  name: string;
-  caption?: string;
-  value?: string;
-  diffLabel?: string | null;
-  diffPositive?: boolean;
-  error?: string;
-}) {
-  const accent = bankAccent(name);
+/** Cartão de saldo de uma conta bancária conectada via Open Finance, com o logo do banco quando reconhecido. */
+export function BankBalanceCard({ name, value, error }: { name: string; value?: string; error?: string }) {
+  const bank = detectBank(name);
   return (
-    <div className="flex items-start gap-3 rounded-2xl bg-neutral-bg p-3.5">
-      <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-          accent ? "" : "bg-brand-light text-brand-ink"
-        }`}
-        style={accent ? { backgroundColor: accent.bg, color: accent.fg } : undefined}
-      >
-        <Bank size={20} weight="fill" aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-bold leading-tight text-ink">{name}</p>
-        {caption && <p className="text-[11px] text-secondary-ink">{caption}</p>}
-        {error ? (
-          <p className="mt-1 text-[11px] text-overdue-ink">{error}</p>
-        ) : (
-          <>
-            <p className="mt-1 text-lg font-extrabold tabular-nums leading-none text-ink">{value}</p>
-            {diffLabel && (
-              <p
-                className={`mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold ${
-                  diffPositive ? "bg-paid-bg text-paid-ink" : "bg-overdue-bg text-overdue-ink"
-                }`}
-              >
-                {diffLabel}
-              </p>
-            )}
-          </>
-        )}
+    <div className="rounded-2xl border border-hairline bg-card p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-hairline">
+          {bank ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={bank.src} alt="" className="h-5 w-5 object-contain" />
+          ) : (
+            <Bank size={18} weight="fill" className="text-brand-ink" aria-hidden="true" />
+          )}
+        </span>
+        <p className="truncate text-sm font-bold leading-tight text-ink">{bank?.label ?? name}</p>
       </div>
+      {error ? (
+        <p className="mt-2.5 text-[11px] text-overdue-ink">{error}</p>
+      ) : (
+        <>
+          <p className="mt-3 text-[11px] font-medium text-secondary-ink">Saldo</p>
+          <p className="text-xl font-extrabold tabular-nums leading-tight text-ink">{value}</p>
+        </>
+      )}
     </div>
   );
 }
