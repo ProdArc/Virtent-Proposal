@@ -550,6 +550,11 @@ function monthsBetween(fromIso: string, toIso: string): number {
 // essa janela simplesmente não são gerados.
 const MAX_CYCLES = 36;
 
+// Quantos ciclos futuros (ainda não vencidos) ficam visíveis com antecedência
+// na matriz de "A receber" — não é pré-pagamento nem nada parecido, só a
+// linha em aberto aparecendo antes do vencimento pra já dar pra acompanhar.
+const FUTURE_CYCLES = 2;
+
 /** Uma cobrança "vazia" (sem nada preenchido pelo usuário) pode ser descartada com segurança na deduplicação. */
 function hasUserData(b: {
   paid: boolean;
@@ -575,10 +580,10 @@ function hasUserData(b: {
 
 /**
  * Geração preguiçosa: garante que existe exatamente uma cobrança pra cada
- * ciclo mensal entre `first_billing_date` e hoje, MAIS uma referência futura
- * (o próximo ciclo, ainda não vencido) — pra aparecer na lista com
- * antecedência e já dar pra anexar comprovante/NFe antes do vencimento
- * chegar. Chamada ao abrir a página de detalhe do cliente. Cadastrar um
+ * ciclo mensal entre `first_billing_date` e hoje, MAIS `FUTURE_CYCLES`
+ * referências futuras (ciclos ainda não vencidos) — pra aparecer na lista com
+ * antecedência e já dar pra acompanhar/anexar comprovante/NFe antes do
+ * vencimento chegar. Chamada ao abrir a página de detalhe do cliente. Cadastrar um
  * cliente antigo (com `first_billing_date` meses atrás) gera todo o histórico
  * de uma vez, pra poder dar baixa nos meses já pagos.
  *
@@ -669,13 +674,14 @@ export async function ensureCurrentBilling(client: FinancialClientRow): Promise<
   const targets: { kind: BillingKind; dueDate: string }[] = [];
   for (const { kind, firstDueDate } of billingSeries(client)) {
     let cursor = firstDueDate;
-    const overshootMonths = monthsBetween(cursor, todayIso) - (MAX_CYCLES - 1);
+    const overshootMonths = monthsBetween(cursor, todayIso) - (MAX_CYCLES - FUTURE_CYCLES);
     if (overshootMonths > 0) {
       cursor = cycleDueDatePlusMonths(cursor, overshootMonths, client.due_day);
     }
+    let futurePushed = 0;
     for (let i = 0; i < MAX_CYCLES; i++) {
       targets.push({ kind, dueDate: cursor });
-      if (cursor > todayIso) break;
+      if (cursor > todayIso && ++futurePushed >= FUTURE_CYCLES) break;
       cursor = nextCycleDueDate(cursor, client.due_day);
     }
   }
