@@ -76,7 +76,7 @@ create index financial_billings_client_idx on financial_billings (client_id);
 -- Acesso só via service role (server-only, ver lib/supabase.ts), que ignora
 -- RLS — por isso não há policies de storage aqui.
 insert into storage.buckets (id, name, public)
-values ('nfes', 'nfes', false), ('comprovantes', 'comprovantes', false)
+values ('nfes', 'nfes', false), ('comprovantes', 'comprovantes', false), ('avatars', 'avatars', false)
 on conflict (id) do nothing;
 -- Contas a pagar: fornecedores, categorias e contas.
 -- Espelha o modelo de contas a receber (financial_clients/financial_billings),
