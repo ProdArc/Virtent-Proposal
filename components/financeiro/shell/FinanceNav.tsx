@@ -92,8 +92,14 @@ export function FinanceBottomNav() {
         {pill && (
           <span
             aria-hidden="true"
-            style={{ left: pill.left, width: pill.width }}
-            className="absolute inset-y-0 z-0 rounded-[1.25rem] bg-brand-light transition-[left,width] duration-[420ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            style={{
+              left: pill.left,
+              width: pill.width,
+              transitionProperty: "left, width",
+              transitionDuration: "420ms",
+              transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+            }}
+            className="absolute inset-y-0 z-0 rounded-[1.25rem] bg-brand-light"
           />
         )}
         {ITEMS.map(({ key, label, href, icon: IconCmp }, index) => {
@@ -103,7 +109,7 @@ export function FinanceBottomNav() {
               <Link
                 href={href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] text-[10.5px] font-semibold transition-[color,transform] duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] text-[10.5px] font-semibold transition duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                   isActive ? "text-brand-ink" : "text-secondary-ink"
                 }`}
               >
@@ -111,9 +117,12 @@ export function FinanceBottomNav() {
                   size={22}
                   weight={isActive ? "fill" : "regular"}
                   aria-hidden="true"
-                  className={`transition-transform duration-[420ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                    isActive ? "scale-110" : "scale-100"
-                  }`}
+                  style={{
+                    transitionProperty: "transform",
+                    transitionDuration: "420ms",
+                    transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+                  }}
+                  className={isActive ? "scale-110" : "scale-100"}
                 />
                 {label}
               </Link>
