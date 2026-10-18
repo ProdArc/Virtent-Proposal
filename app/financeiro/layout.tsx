@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { Gear, SignOut } from "@phosphor-icons/react/dist/ssr";
 import { getSessionUser } from "@/lib/auth";
+import { getAvatarSignedUrl } from "@/lib/profile";
 import { logoutAction } from "@/app/logout/actions";
 import {
   FinanceBottomNav,
@@ -39,6 +40,7 @@ export default async function FinanceiroLayout({ children }: { children: React.R
   const theme = saved === "dark" || saved === "light" ? saved : "auto";
   const name = user ? capitalize(user) : "";
   const initial = name.charAt(0) || "V";
+  const avatarUrl = user ? await getAvatarSignedUrl(user) : null;
 
   return (
     <div data-theme={theme} className="fin-app min-h-dvh bg-canvas text-ink lg:pl-64">
@@ -91,8 +93,13 @@ export default async function FinanceiroLayout({ children }: { children: React.R
       {/* Celular */}
       <header className="flex items-center justify-between px-4 pb-1 pt-[max(0.875rem,env(safe-area-inset-top))] sm:px-6 lg:hidden">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
-            {initial}
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-sm font-bold text-white">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initial
+            )}
           </span>
           <span>
             <span className="block text-[11px] leading-tight text-secondary-ink">Olá</span>
