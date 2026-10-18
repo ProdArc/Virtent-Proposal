@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   ChartLineUp,
   HandCoins,
@@ -55,27 +56,65 @@ export function FinanceSidebarNav() {
   );
 }
 
-/** Barra de abas flutuante (celular e tablet). */
+/**
+ * Barra de abas flutuante (celular e tablet). O indicador "desliza" de uma
+ * aba pra outra em vez de simplesmente trocar de cor — mesma ideia da barra
+ * de abas "liquid glass" do iOS 26: mede a posição real do item ativo (em
+ * pixel, via ref) e anima até lá com uma curva com leve "overshoot" de mola.
+ */
 export function FinanceBottomNav() {
   const active = activeKey(usePathname());
+  const activeIndex = ITEMS.findIndex((item) => item.key === active);
+
+  const listRef = useRef<HTMLUListElement>(null);
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const el = itemRefs.current[activeIndex];
+    if (!list || !el) return;
+
+    const measure = () => setPill({ left: el.offsetLeft, width: el.offsetWidth });
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(list);
+    return () => ro.disconnect();
+  }, [activeIndex]);
+
   return (
     <nav
       aria-label="Financeiro"
       className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-[1.75rem] bg-card/95 p-1.5 shadow-float ring-1 ring-hairline backdrop-blur lg:hidden"
     >
-      <ul className="grid grid-cols-4 gap-1">
-        {ITEMS.map(({ key, label, href, icon: IconCmp }) => {
+      <ul ref={listRef} className="relative grid grid-cols-4 gap-1">
+        {pill && (
+          <span
+            aria-hidden="true"
+            style={{ left: pill.left, width: pill.width }}
+            className="absolute inset-y-0 z-0 rounded-[1.25rem] bg-brand-light transition-[left,width] duration-[420ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          />
+        )}
+        {ITEMS.map(({ key, label, href, icon: IconCmp }, index) => {
           const isActive = key === active;
           return (
-            <li key={key}>
+            <li key={key} ref={(node) => { itemRefs.current[index] = node; }} className="relative z-10">
               <Link
                 href={href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] text-[10.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-                  isActive ? "bg-brand-light text-brand-ink" : "text-secondary-ink active:bg-neutral-bg"
+                className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] text-[10.5px] font-semibold transition-[color,transform] duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                  isActive ? "text-brand-ink" : "text-secondary-ink"
                 }`}
               >
-                <IconCmp size={22} weight={isActive ? "fill" : "regular"} aria-hidden="true" />
+                <IconCmp
+                  size={22}
+                  weight={isActive ? "fill" : "regular"}
+                  aria-hidden="true"
+                  className={`transition-transform duration-[420ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                    isActive ? "scale-110" : "scale-100"
+                  }`}
+                />
                 {label}
               </Link>
             </li>
