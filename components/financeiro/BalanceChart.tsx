@@ -1,3 +1,7 @@
+"use client";
+
+import { useRef, useState } from "react";
+
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const compact = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -6,6 +10,8 @@ const compact = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 const monthShort = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+const monthLong = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export interface BalancePoint {
   key: string; // "2026-08"
@@ -21,9 +27,14 @@ const PAD = { top: 16, right: 12, bottom: 26, left: 12 };
  * tem nenhuma, e um gráfico de uma série não justifica adicionar.
  *
  * viewBox + preserveAspectRatio="none" no eixo X deixa o traçado acompanhar a
- * largura do container sem recalcular nada no cliente.
+ * largura do container sem recalcular nada no cliente — só o índice do ponto
+ * sob o ponteiro (mouse ou toque) precisa de matemática em tempo real, feita
+ * em cima da largura real do container (getBoundingClientRect), não do viewBox.
  */
 export function BalanceChart({ series }: { series: BalancePoint[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
   if (series.length === 0) {
     return (
       <p className="text-sm text-neutral-ink">
@@ -66,56 +77,123 @@ export function BalanceChart({ series }: { series: BalancePoint[] }) {
   const last = series[series.length - 1];
   const zeroY = y(0);
 
+  const updateFromClientX = (clientX: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return;
+    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    setHoverIndex(Math.round(fraction * (series.length - 1)));
+  };
+
+  const active = hoverIndex !== null ? series[hoverIndex] : null;
+  // Posição do tooltip em %, com o próprio tooltip se deslocando perto das
+  // bordas (via CSS, translateX condicional) pra nunca vazar do card.
+  const activeXPct = hoverIndex !== null ? (x(hoverIndex) / W) * 100 : 0;
+  const tooltipAlign = activeXPct < 12 ? "left" : activeXPct > 88 ? "right" : "center";
+
   return (
     <div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`Evolução do saldo. Último valor: ${currency.format(last.balance)}`}
-        className="h-52 w-full"
+      <div
+        ref={containerRef}
+        className="relative touch-pan-y select-none"
+        onPointerMove={(e) => updateFromClientX(e.clientX)}
+        onPointerDown={(e) => updateFromClientX(e.clientX)}
+        onPointerLeave={() => setHoverIndex(null)}
       >
-        <defs>
-          <linearGradient id="balance-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1baf7a" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#1baf7a" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`Evolução do saldo. Último valor: ${currency.format(last.balance)}`}
+          className="h-52 w-full"
+        >
+          <defs>
+            <linearGradient id="balance-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1baf7a" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#1baf7a" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-        {/* Linha do zero: separa saldo positivo de negativo */}
-        {min < 0 && (
-          <line
-            x1={PAD.left}
-            x2={W - PAD.right}
-            y1={zeroY}
-            y2={zeroY}
-            className="stroke-border"
-            strokeWidth="1"
-            strokeDasharray="4 4"
+          {/* Linha do zero: separa saldo positivo de negativo */}
+          {min < 0 && (
+            <line
+              x1={PAD.left}
+              x2={W - PAD.right}
+              y1={zeroY}
+              y2={zeroY}
+              className="stroke-border"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+          )}
+
+          <path d={area} fill="url(#balance-fill)" />
+          <path
+            d={line}
+            fill="none"
+            stroke="#1baf7a"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
           />
+
+          {/* Crosshair: acompanha o ponto mais próximo do ponteiro, não exige mirar na linha de 2px. */}
+          {hoverIndex !== null && (
+            <line
+              x1={x(hoverIndex)}
+              x2={x(hoverIndex)}
+              y1={PAD.top}
+              y2={H - PAD.bottom}
+              className="stroke-border"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+
+          {series.map((p, i) => {
+            const isLast = i === series.length - 1;
+            const isHovered = i === hoverIndex;
+            return (
+              <circle
+                key={p.key}
+                cx={x(i)}
+                cy={y(p.balance)}
+                r={isHovered ? 5 : isLast ? 4 : 2.5}
+                fill="#1baf7a"
+                className={isLast ? "fill-brand-ink" : undefined}
+                stroke={isHovered ? "var(--color-card)" : undefined}
+                strokeWidth={isHovered ? 2 : undefined}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Tooltip HTML por cima do SVG — texto nítido em qualquer escala, sem deformar com preserveAspectRatio="none". */}
+        {active && (
+          <div
+            className="pointer-events-none absolute top-1 z-10 rounded-xl px-3 py-2 text-white shadow-float"
+            style={{
+              // Cor fixa (não o token "ink", que inverte no tema escuro) — o
+              // tooltip precisa continuar escuro com texto branco nos dois temas.
+              backgroundColor: "#18181B",
+              left: `${activeXPct}%`,
+              transform:
+                tooltipAlign === "left"
+                  ? "translateX(0)"
+                  : tooltipAlign === "right"
+                    ? "translateX(-100%)"
+                    : "translateX(-50%)",
+            }}
+          >
+            <p className="whitespace-nowrap text-[10px] font-medium text-white/70">
+              {capitalize(monthLong.format(new Date(`${active.key}-01T00:00:00`)))}
+            </p>
+            <p className="whitespace-nowrap text-sm font-bold tabular-nums">
+              {currency.format(active.balance)}
+            </p>
+          </div>
         )}
-
-        <path d={area} fill="url(#balance-fill)" />
-        <path
-          d={line}
-          fill="none"
-          stroke="#1baf7a"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-        {series.map((p, i) => (
-          <circle
-            key={p.key}
-            cx={x(i)}
-            cy={y(p.balance)}
-            r={i === series.length - 1 ? 4 : 2.5}
-            fill="#1baf7a"
-            className={i === series.length - 1 ? "fill-brand-ink" : undefined}
-          />
-        ))}
-      </svg>
+      </div>
 
       {/* Rótulos fora do SVG: dentro dele o preserveAspectRatio="none" os deformaria. */}
       <div className="mt-1 flex justify-between">
@@ -123,7 +201,7 @@ export function BalanceChart({ series }: { series: BalancePoint[] }) {
           <span
             key={p.key}
             className={`text-[10px] tabular-nums ${
-              i === series.length - 1 ? "font-bold text-ink" : "text-secondary-ink"
+              i === hoverIndex ? "font-bold text-brand-ink" : i === series.length - 1 ? "font-bold text-ink" : "text-secondary-ink"
             }`}
           >
             {monthShort.format(new Date(`${p.key}-01T00:00:00`)).replace(".", "")}
