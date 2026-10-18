@@ -90,10 +90,21 @@ export default async function CaixaPage({
     const openSetups = clients.filter((c) => !c.setup_paid);
     const openPayables = payables.filter((p) => p.status === "pending");
 
+    // "Previsto" é só o que já está ou fica em aberto neste mês (vencido ou
+    // vencendo agora) — ciclos futuros gerados com antecedência (ver
+    // FUTURE_CYCLES em lib/financial.ts) não entram aqui, só aparecem quando
+    // o próprio mês deles chegar. Ficam de fora pra não inflar o "previsto"
+    // com meses que ainda nem começaram.
+    const dueByMonthEnd = (due: string) => due.slice(0, 7) <= monthKey;
+
     previstoReceber =
-      openBillings.reduce((s, b) => s + calcBillingTotal(b).total_value, 0) +
-      openSetups.reduce((s, c) => s + Number(c.setup_value), 0);
-    previstoPagar = openPayables.reduce((s, p) => s + remainingAmount(p), 0);
+      openBillings.filter((b) => dueByMonthEnd(b.due_date)).reduce((s, b) => s + calcBillingTotal(b).total_value, 0) +
+      openSetups
+        .filter((c) => dueByMonthEnd(c.setup_due_date ?? c.first_billing_date))
+        .reduce((s, c) => s + Number(c.setup_value), 0);
+    previstoPagar = openPayables
+      .filter((p) => dueByMonthEnd(p.due_date))
+      .reduce((s, p) => s + remainingAmount(p), 0);
 
     const within = (due: string, days: number) => daysUntil(due, today) <= days;
     for (const [days, target] of [[7, proj7], [30, proj30]] as const) {
