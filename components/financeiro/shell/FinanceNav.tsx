@@ -6,27 +6,30 @@ import { useLayoutEffect, useRef, useState } from "react";
 import {
   ChartLineUp,
   HandCoins,
+  Megaphone,
   Receipt,
   Wallet,
   type Icon,
 } from "@phosphor-icons/react";
 
-type NavKey = "receber" | "pagar" | "caixa" | "dashboard";
+type NavKey = "receber" | "pagar" | "caixa" | "meta" | "dashboard";
 
 const ITEMS: { key: NavKey; label: string; href: string; icon: Icon }[] = [
   { key: "receber", label: "A receber", href: "/financeiro", icon: HandCoins },
   { key: "pagar", label: "A pagar", href: "/financeiro/pagar", icon: Receipt },
   { key: "caixa", label: "Caixa", href: "/financeiro/caixa", icon: Wallet },
+  { key: "meta", label: "Meta", href: "/financeiro/meta", icon: Megaphone },
   { key: "dashboard", label: "Dashboard", href: "/financeiro/dashboard", icon: ChartLineUp },
 ];
 
 /**
- * Qual item do menu a rota atual pertence. Tudo que não é pagar/caixa/dashboard
- * (lista de clientes, ficha do cliente, cadastro) é "A receber".
+ * Qual item do menu a rota atual pertence. Tudo que não é pagar/caixa/meta/
+ * dashboard (lista de clientes, ficha do cliente, cadastro) é "A receber".
  */
 function activeKey(pathname: string): NavKey {
   if (pathname.startsWith("/financeiro/pagar")) return "pagar";
   if (pathname.startsWith("/financeiro/caixa")) return "caixa";
+  if (pathname.startsWith("/financeiro/meta")) return "meta";
   if (pathname.startsWith("/financeiro/dashboard")) return "dashboard";
   return "receber";
 }
@@ -88,7 +91,7 @@ export function FinanceBottomNav() {
       aria-label="Financeiro"
       className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-[1.75rem] bg-card/95 p-1.5 shadow-float ring-1 ring-hairline backdrop-blur lg:hidden"
     >
-      <ul ref={listRef} className="relative grid grid-cols-4 gap-1">
+      <ul ref={listRef} className="relative grid grid-cols-5 gap-1">
         {pill && (
           <span
             aria-hidden="true"
