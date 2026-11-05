@@ -111,6 +111,33 @@ export function ClientMatrix({
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <th
+                scope="row"
+                className="sticky left-0 z-10 border-t border-hairline bg-card px-3 py-2 text-left text-xs font-semibold text-secondary-ink sm:px-4"
+              >
+                Total
+              </th>
+              {months.map((m) => {
+                const total = rows.reduce((sum, { billings }) => {
+                  const cell = billings.filter((b) => b.due_date.slice(0, 7) === m);
+                  return sum + cell.reduce((s, b) => s + calcBillingTotal(b).total_value, 0);
+                }, 0);
+                return (
+                  <td
+                    key={m}
+                    className="border-t border-hairline px-1 py-2 text-center text-xs font-bold tabular-nums text-ink"
+                  >
+                    {total > 0 ? compact.format(total) : "—"}
+                  </td>
+                );
+              })}
+              <td className="border-t border-hairline px-4 py-2 text-right text-[13px] font-bold tabular-nums text-ink">
+                {compact.format(rows.reduce((s, { status }) => s + status.openTotal, 0))}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 
