@@ -635,7 +635,16 @@ function billingSeries(client: FinancialClientRow): BillingSeries[] {
   return series;
 }
 
-/** Linha nova de cobrança com o snapshot dos valores do cliente no momento da geração. */
+/**
+ * Linha nova de cobrança com o snapshot dos valores do cliente no momento da
+ * geração. Sempre inclui as mesmas chaves nos dois tipos (`monthly_value` até
+ * `meta_fee_per_dispatch`) mesmo quando o valor é 0 — o insert em lote mistura
+ * linhas de mensalidade e de repasse Meta na mesma chamada, e o PostgREST
+ * monta as colunas pela união das chaves do lote: uma chave ausente numa
+ * linha vira NULL explícito, não o default da coluna, e isso já quebrou o
+ * insert (not-null violation em meta_fee_per_dispatch) pra cliente novo com
+ * mensalidade e Meta ligadas ao mesmo tempo.
+ */
 function newBillingRow(client: FinancialClientRow, kind: BillingKind, due_date: string) {
   if (kind === "meta") {
     return {
@@ -655,6 +664,7 @@ function newBillingRow(client: FinancialClientRow, kind: BillingKind, due_date: 
     monthly_value: client.bill_fixed ? client.monthly_value : 0,
     commission_pct: client.bill_commission ? client.commission_pct : 0,
     revenue_amount: 0,
+    meta_fee_per_dispatch: 0,
   };
 }
 
