@@ -6,6 +6,8 @@ import {
   Plus,
   Rows,
   SquaresFour,
+  ToggleLeft,
+  ToggleRight,
   WarningCircle,
 } from "@phosphor-icons/react/dist/ssr";
 import {
@@ -63,15 +65,24 @@ export const dynamic = "force-dynamic";
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; ref?: string; segment?: string; view?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    q?: string;
+    ref?: string;
+    segment?: string;
+    view?: string;
+    inactive?: string;
+  }>;
 }) {
-  const { status, q, ref, segment, view: viewParam } = await searchParams;
+  const { status, q, ref, segment, view: viewParam, inactive } = await searchParams;
   // "lista" é o padrão e não vai na URL; "matriz" = clientes x meses.
   const view: "lista" | "matriz" = viewParam === "matriz" ? "matriz" : "lista";
   const activeFilter: StatusFilter = VALID_FILTERS.includes(status as StatusFilter)
     ? (status as StatusFilter)
     : "";
   const search = q ?? "";
+  // Cancelado some da visão por padrão — "incluir inativos" é opt-in, não o contrário.
+  const showInactive = inactive === "1";
 
   let clients: FinancialClientRow[] = [];
   let billings: FinancialBillingRow[] = [];
@@ -92,11 +103,17 @@ export default async function FinanceiroPage({
     billingsByClient.set(b.client_id, [...(billingsByClient.get(b.client_id) ?? []), b]);
   }
 
-  const enriched = clients.map((client) => ({
+  const enrichedAll = clients.map((client) => ({
     client,
     billings: billingsByClient.get(client.id) ?? [],
     status: clientStatus(client, billingsByClient.get(client.id) ?? [], today),
   }));
+
+  // Escopo da tela: cancelado só entra quando "incluir inativos" está ligado —
+  // afeta tudo (totais, chips, lista), não só o recorte visível, porque aqui é
+  // "quem eu quero olhar", não um filtro de recorte dentro de quem já vejo.
+  const enriched = showInactive ? enrichedAll : enrichedAll.filter((e) => !e.client.canceled_at);
+  const inactiveCount = enrichedAll.length - enrichedAll.filter((e) => !e.client.canceled_at).length;
 
   // Referências (meses de cobrança) disponíveis pro filtro — união de todas as
   // cobranças já geradas, mais recente primeiro.
@@ -153,6 +170,7 @@ export default async function FinanceiroPage({
     if (activeRef) params.set("ref", activeRef);
     if (activeSegment) params.set("segment", activeSegment);
     if (view === "matriz") params.set("view", "matriz");
+    if (showInactive) params.set("inactive", "1");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
@@ -165,6 +183,20 @@ export default async function FinanceiroPage({
     if (activeRef) params.set("ref", activeRef);
     if (activeSegment) params.set("segment", activeSegment);
     if (target === "matriz") params.set("view", "matriz");
+    if (showInactive) params.set("inactive", "1");
+    const query = params.toString();
+    return query ? `/financeiro?${query}` : "/financeiro";
+  };
+
+  /** Link que liga/desliga "incluir inativos" mantendo os outros filtros. */
+  const inactiveToggleHref = () => {
+    const params = new URLSearchParams();
+    if (activeFilter) params.set("status", activeFilter);
+    if (search) params.set("q", search);
+    if (activeRef) params.set("ref", activeRef);
+    if (activeSegment) params.set("segment", activeSegment);
+    if (view === "matriz") params.set("view", "matriz");
+    if (!showInactive) params.set("inactive", "1");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
@@ -259,30 +291,52 @@ export default async function FinanceiroPage({
             reference={activeRef}
             segment={activeSegment}
             view={view === "matriz" ? "matriz" : undefined}
+            inactive={showInactive}
           />
-          <div
-            role="group"
-            aria-label="Modo de exibição"
-            className="inline-flex shrink-0 rounded-full bg-card p-1 shadow-card"
-          >
-            {(
-              [
-                ["lista", "Lista", Rows],
-                ["matriz", "Matriz", SquaresFour],
-              ] as const
-            ).map(([key, label, IconCmp]) => (
+          <div className="flex shrink-0 items-center gap-2">
+            {inactiveCount > 0 && (
               <Link
-                key={key}
-                href={viewHref(key)}
-                aria-current={view === key ? "true" : undefined}
+                href={inactiveToggleHref()}
+                aria-pressed={showInactive}
                 className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
-                  view === key ? "bg-strong text-on-strong" : "text-muted hover:text-ink"
+                  showInactive ? "bg-strong text-on-strong" : "bg-card text-muted shadow-card hover:text-ink"
                 }`}
               >
-                <IconCmp size={16} weight="bold" aria-hidden="true" />
-                {label}
+                {showInactive ? (
+                  <ToggleRight size={18} weight="fill" aria-hidden="true" />
+                ) : (
+                  <ToggleLeft size={18} aria-hidden="true" />
+                )}
+                Incluir inativos
+                <span className={`tabular-nums ${showInactive ? "opacity-80" : "text-secondary-ink"}`}>
+                  {inactiveCount}
+                </span>
               </Link>
-            ))}
+            )}
+            <div
+              role="group"
+              aria-label="Modo de exibição"
+              className="inline-flex rounded-full bg-card p-1 shadow-card"
+            >
+              {(
+                [
+                  ["lista", "Lista", Rows],
+                  ["matriz", "Matriz", SquaresFour],
+                ] as const
+              ).map(([key, label, IconCmp]) => (
+                <Link
+                  key={key}
+                  href={viewHref(key)}
+                  aria-current={view === key ? "true" : undefined}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                    view === key ? "bg-strong text-on-strong" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  <IconCmp size={16} weight="bold" aria-hidden="true" />
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>

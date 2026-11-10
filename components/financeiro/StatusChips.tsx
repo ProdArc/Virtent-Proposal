@@ -22,6 +22,7 @@ export function StatusChips({
   reference,
   segment,
   view,
+  inactive,
 }: {
   active: StatusFilter;
   counts: Record<StatusFilter, number>;
@@ -29,6 +30,7 @@ export function StatusChips({
   reference?: string;
   segment?: string;
   view?: string;
+  inactive?: boolean;
 }) {
   const hrefFor = (filter: StatusFilter) => {
     const params = new URLSearchParams();
@@ -37,6 +39,7 @@ export function StatusChips({
     if (reference) params.set("ref", reference);
     if (segment) params.set("segment", segment);
     if (view) params.set("view", view);
+    if (inactive) params.set("inactive", "1");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
