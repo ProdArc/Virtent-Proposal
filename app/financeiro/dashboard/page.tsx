@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   calcBillingTotal,
+  distinctSegments,
   listAllBillings,
   listFinancialClients,
   type FinancialBillingRow,
@@ -64,11 +65,12 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; status?: string; client?: string }>;
+  searchParams: Promise<{ month?: string; status?: string; client?: string; segment?: string }>;
 }) {
-  const { month, status, client } = await searchParams;
+  const { month, status, client, segment } = await searchParams;
   const activeStatus = status ?? "";
   const activeClient = client ?? "";
+  const activeSegment = segment ?? "";
 
   let clients: FinancialClientRow[] = [];
   let billings: FinancialBillingRow[] = [];
@@ -100,6 +102,11 @@ export default async function DashboardPage({
     { value: "", label: "Todos os clientes" },
     ...clients.map((c) => ({ value: c.id, label: c.name })),
   ];
+  const segmentSuggestions = distinctSegments(clients);
+  const SEGMENT_OPTIONS = [
+    { value: "", label: "Todos os segmentos" },
+    ...segmentSuggestions.map((s) => ({ value: s, label: s })),
+  ];
 
   /** Aplica o filtro de status a um item cobrado (implantação ou mensalidade). */
   function matchesStatus(paid: boolean, dueDate: string): boolean {
@@ -110,6 +117,8 @@ export default async function DashboardPage({
   }
 
   const inClientFilter = (id: string) => !activeClient || id === activeClient;
+  const inSegmentFilter = (id: string) =>
+    !activeSegment || clientsById.get(id)?.segment === activeSegment;
 
   // --- Faturamento por cliente (respeita todos os filtros) ---
   interface ClientRevenue {
@@ -141,7 +150,7 @@ export default async function DashboardPage({
   };
 
   for (const c of clients) {
-    if (!inClientFilter(c.id)) continue;
+    if (!inClientFilter(c.id) || !inSegmentFilter(c.id)) continue;
     const entry = clientEntryDate(c);
     if (activeMonth && monthKey(entry) !== activeMonth) continue;
     if (!matchesStatus(c.setup_paid, entry)) continue;
@@ -149,7 +158,7 @@ export default async function DashboardPage({
   }
 
   for (const b of billings) {
-    if (!inClientFilter(b.client_id)) continue;
+    if (!inClientFilter(b.client_id) || !inSegmentFilter(b.client_id)) continue;
     if (activeMonth && monthKey(b.due_date) !== activeMonth) continue;
     if (!matchesStatus(b.paid, b.due_date)) continue;
     const { revenue_value, commission_value, meta_fee_value, pass_through_value } =
@@ -173,10 +182,40 @@ export default async function DashboardPage({
   const passThroughTotal = clientRows.reduce((s, r) => s + r.passThrough, 0);
   const grandTotal = setupTotal + monthlyTotal;
 
+  // --- Faturamento por segmento (mesmo recorte de clientRows, agrupado) ---
+  interface SegmentRevenue {
+    segment: string;
+    setup: number;
+    monthly: number;
+    passThrough: number;
+    clientCount: number;
+  }
+  const revenueBySegment = new Map<string, SegmentRevenue>();
+  for (const r of clientRows) {
+    const label = clientsById.get(r.id)?.segment || "Sem segmento";
+    const row = revenueBySegment.get(label) ?? {
+      segment: label,
+      setup: 0,
+      monthly: 0,
+      passThrough: 0,
+      clientCount: 0,
+    };
+    row.setup += r.setup;
+    row.monthly += r.monthly;
+    row.passThrough += r.passThrough;
+    row.clientCount += 1;
+    revenueBySegment.set(label, row);
+  }
+  const segmentRows = [...revenueBySegment.values()]
+    .map((r) => ({ ...r, total: r.setup + r.monthly }))
+    .sort((a, b) => b.total - a.total);
+
   // --- Clientes que entraram no mês de referência ---
   const enteredClients = clients.filter(
     (c) =>
-      inClientFilter(c.id) && (!activeMonth || monthKey(clientEntryDate(c)) === activeMonth)
+      inClientFilter(c.id) &&
+      inSegmentFilter(c.id) &&
+      (!activeMonth || monthKey(clientEntryDate(c)) === activeMonth)
   );
 
   // --- Série mensal: implantação x mensalidade ---
@@ -189,13 +228,13 @@ export default async function DashboardPage({
     return b;
   };
   for (const c of clients) {
-    if (!inClientFilter(c.id)) continue;
+    if (!inClientFilter(c.id) || !inSegmentFilter(c.id)) continue;
     const entry = clientEntryDate(c);
     if (!matchesStatus(c.setup_paid, entry)) continue;
     bucket(monthKey(entry)).setup += c.setup_value;
   }
   for (const b of billings) {
-    if (!inClientFilter(b.client_id)) continue;
+    if (!inClientFilter(b.client_id) || !inSegmentFilter(b.client_id)) continue;
     if (!matchesStatus(b.paid, b.due_date)) continue;
     bucket(monthKey(b.due_date)).monthly += calcBillingTotal(b).revenue_value;
   }
@@ -261,7 +300,9 @@ export default async function DashboardPage({
         }
       />
 
-      <div className="mb-3 mt-4 grid grid-cols-1 gap-3 rounded-3xl bg-card p-4 shadow-card sm:grid-cols-3">
+      <div
+        className={`mb-3 mt-4 grid grid-cols-1 gap-3 rounded-3xl bg-card p-4 shadow-card sm:grid-cols-2 ${segmentSuggestions.length > 0 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+      >
         <FilterSelect
           name="month"
           label="Mês de referência"
@@ -276,6 +317,15 @@ export default async function DashboardPage({
           options={CLIENT_OPTIONS}
           basePath="/financeiro/dashboard"
         />
+        {segmentSuggestions.length > 0 && (
+          <FilterSelect
+            name="segment"
+            label="Segmento"
+            defaultValue={activeSegment}
+            options={SEGMENT_OPTIONS}
+            basePath="/financeiro/dashboard"
+          />
+        )}
         <FilterSelect
           name="status"
           label="Status"
@@ -485,6 +535,127 @@ export default async function DashboardPage({
             </>
           )}
         </section>
+
+        {/* Faturamento por segmento */}
+        {segmentSuggestions.length > 0 && (
+          <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8 mb-6">
+            <div className="mb-5">
+              <h2 className="text-sm font-bold text-ink">Faturamento por segmento</h2>
+              <p className="text-xs text-subtle">
+                {scopeLabel === "todo o período" ? "Todo o período" : scopeLabel} · mesmo recorte
+                acima, agrupado por segmento
+              </p>
+            </div>
+
+            {segmentRows.length === 0 ? (
+              <p className="text-sm text-secondary-ink">Nenhum faturamento no filtro selecionado.</p>
+            ) : (
+              <>
+                <ul className="divide-y divide-hairline md:hidden">
+                  {segmentRows.map((r) => (
+                    <li key={r.segment} className="flex items-start justify-between gap-3 py-3.5">
+                      <span className="min-w-0">
+                        <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink">
+                          {r.segment}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-secondary-ink">
+                          {r.clientCount} cliente{r.clientCount === 1 ? "" : "s"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-[15px] font-bold tabular-nums text-ink">
+                          {currency.format(r.total)}
+                        </span>
+                        {r.passThrough > 0 && (
+                          <span className="block text-[11px] text-subtle tabular-nums">
+                            + {currency.format(r.passThrough)} Meta
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="py-2 pr-4 text-left text-[11px] font-semibold text-muted">
+                          Segmento
+                        </th>
+                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
+                          Clientes
+                        </th>
+                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
+                          Implantação
+                        </th>
+                        <th className="py-2 px-4 text-right text-[11px] font-semibold text-muted">
+                          Mensalidades
+                        </th>
+                        <th className="py-2 pl-4 text-right text-[11px] font-semibold text-muted">
+                          Total
+                        </th>
+                        {passThroughTotal > 0 && (
+                          <th className="py-2 pl-4 text-right text-[11px] font-semibold text-subtle">
+                            Repasse Meta
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {segmentRows.map((r) => (
+                        <tr
+                          key={r.segment}
+                          className="border-b border-neutral-bg last:border-b-0"
+                        >
+                          <td className="py-2.5 pr-4 font-medium text-ink">{r.segment}</td>
+                          <td className="py-2.5 px-4 text-right text-muted tabular-nums">
+                            {r.clientCount}
+                          </td>
+                          <td className="py-2.5 px-4 text-right text-muted tabular-nums">
+                            {r.setup > 0 ? currency.format(r.setup) : "—"}
+                          </td>
+                          <td className="py-2.5 px-4 text-right text-muted tabular-nums">
+                            {r.monthly > 0 ? currency.format(r.monthly) : "—"}
+                          </td>
+                          <td className="py-2.5 pl-4 text-right font-semibold text-ink tabular-nums">
+                            {currency.format(r.total)}
+                          </td>
+                          {passThroughTotal > 0 && (
+                            <td className="py-2.5 pl-4 text-right text-subtle tabular-nums">
+                              {r.passThrough > 0 ? currency.format(r.passThrough) : "—"}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-border">
+                        <td className="py-2.5 pr-4 text-[11px] font-semibold text-muted">Total</td>
+                        <td className="py-2.5 px-4 text-right font-semibold text-ink tabular-nums">
+                          {clientRows.length}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-semibold text-ink tabular-nums">
+                          {currency.format(setupTotal)}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-semibold text-ink tabular-nums">
+                          {currency.format(monthlyTotal)}
+                        </td>
+                        <td className="py-2.5 pl-4 text-right font-extrabold text-ink tabular-nums">
+                          {currency.format(grandTotal)}
+                        </td>
+                        {passThroughTotal > 0 && (
+                          <td className="py-2.5 pl-4 text-right font-semibold text-subtle tabular-nums">
+                            {currency.format(passThroughTotal)}
+                          </td>
+                        )}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+        )}
 
         {/* Faturamento por cliente */}
         <section className="rounded-3xl bg-card shadow-card p-6 sm:p-8">

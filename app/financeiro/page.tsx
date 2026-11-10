@@ -63,9 +63,9 @@ export const dynamic = "force-dynamic";
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; ref?: string; view?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; ref?: string; segment?: string; view?: string }>;
 }) {
-  const { status, q, ref, view: viewParam } = await searchParams;
+  const { status, q, ref, segment, view: viewParam } = await searchParams;
   // "lista" é o padrão e não vai na URL; "matriz" = clientes x meses.
   const view: "lista" | "matriz" = viewParam === "matriz" ? "matriz" : "lista";
   const activeFilter: StatusFilter = VALID_FILTERS.includes(status as StatusFilter)
@@ -111,6 +111,13 @@ export default async function FinanceiroPage({
     })),
   ];
 
+  const segmentSuggestions = distinctSegments(clients);
+  const activeSegment = segment && segmentSuggestions.includes(segment) ? segment : "";
+  const SEGMENT_OPTIONS = [
+    { value: "", label: "Todos os segmentos" },
+    ...segmentSuggestions.map((s) => ({ value: s, label: s })),
+  ];
+
   // Totais e contagens dos chips vêm da base inteira, não do recorte visível —
   // senão o número do filtro mudaria conforme o próprio filtro.
   const totalOpen = enriched.reduce((s, e) => s + e.status.openTotal, 0);
@@ -127,7 +134,8 @@ export default async function FinanceiroPage({
     (e) =>
       matchesFilter(e.status, activeFilter) &&
       (needle === "" || normalize(e.client.name).includes(needle)) &&
-      (activeRef === "" || e.billings.some((b) => b.due_date.slice(0, 7) === activeRef))
+      (activeRef === "" || e.billings.some((b) => b.due_date.slice(0, 7) === activeRef)) &&
+      (activeSegment === "" || e.client.segment === activeSegment)
   );
 
   // Ordena por urgência; dentro de cada faixa, alfabético.
@@ -138,13 +146,12 @@ export default async function FinanceiroPage({
       .sort((a, b) => a.client.name.localeCompare(b.client.name, "pt-BR")),
   })).filter((g) => g.items.length > 0);
 
-  const segmentSuggestions = distinctSegments(clients);
-
   const hrefFor = (filter: StatusFilter) => {
     const params = new URLSearchParams();
     if (filter) params.set("status", filter);
     if (search) params.set("q", search);
     if (activeRef) params.set("ref", activeRef);
+    if (activeSegment) params.set("segment", activeSegment);
     if (view === "matriz") params.set("view", "matriz");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
@@ -156,6 +163,7 @@ export default async function FinanceiroPage({
     if (activeFilter) params.set("status", activeFilter);
     if (search) params.set("q", search);
     if (activeRef) params.set("ref", activeRef);
+    if (activeSegment) params.set("segment", activeSegment);
     if (target === "matriz") params.set("view", "matriz");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
@@ -224,7 +232,9 @@ export default async function FinanceiroPage({
 
       {/* Filtros */}
       <div className="mb-5 mt-5 flex flex-col gap-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_14rem]">
+        <div
+          className={`grid gap-3 ${segmentSuggestions.length > 0 ? "sm:grid-cols-[1fr_14rem_14rem]" : "sm:grid-cols-[1fr_14rem]"}`}
+        >
           <SearchInput initialValue={search} />
           <FilterSelect
             name="ref"
@@ -232,6 +242,14 @@ export default async function FinanceiroPage({
             options={REF_OPTIONS}
             basePath="/financeiro"
           />
+          {segmentSuggestions.length > 0 && (
+            <FilterSelect
+              name="segment"
+              defaultValue={activeSegment}
+              options={SEGMENT_OPTIONS}
+              basePath="/financeiro"
+            />
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <StatusChips
@@ -239,6 +257,7 @@ export default async function FinanceiroPage({
             counts={counts}
             search={search}
             reference={activeRef}
+            segment={activeSegment}
             view={view === "matriz" ? "matriz" : undefined}
           />
           <div
