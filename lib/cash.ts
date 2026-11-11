@@ -16,7 +16,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 
 export type Direction = "in" | "out";
 export type MovementKind = "opening" | "setup" | "monthly" | "payable" | "manual";
-export type SourceType = "client_setup" | "billing" | "payable";
+export type SourceType = "client_setup" | "billing" | "payable" | "manual_receivable";
 
 export interface CashMovementRow {
   id: string;

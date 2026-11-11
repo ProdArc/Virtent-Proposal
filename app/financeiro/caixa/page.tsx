@@ -3,6 +3,7 @@ import { getCashBalance, getOpeningMovement, listMovements, type CashMovementRow
 import { calcBillingTotal, listAllBillings, listFinancialClients } from "@/lib/financial";
 import { listPayables } from "@/lib/payables";
 import { remainingAmount } from "@/lib/payables-status";
+import { listManualReceivables, type ManualReceivableRow } from "@/lib/manual-receivables";
 import { daysUntil, todayIso } from "@/lib/urgency";
 import { Bank, ChartPieSlice, HandCoins, ListBullets, Receipt } from "@phosphor-icons/react/dist/ssr";
 import { getLiveBalances, type LiveBalance } from "@/lib/pluggy-connections";
@@ -11,6 +12,7 @@ import { SummaryCard } from "@/components/financeiro/SummaryCard";
 import { BalanceChart } from "@/components/financeiro/BalanceChart";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
 import { ManualIncomeForm } from "./ManualIncomeForm";
+import { ManualReceivablesList } from "./ManualReceivablesList";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthLongFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -78,17 +80,20 @@ export default async function CaixaPage({
   let proj7 = { receber: 0, pagar: 0 };
   let proj30 = { receber: 0, pagar: 0 };
   let projCustom = { receber: 0, pagar: 0 };
+  let openManualReceivables: ManualReceivableRow[] = [];
 
   try {
-    const [clients, billings, payables] = await Promise.all([
+    const [clients, billings, payables, manualReceivables] = await Promise.all([
       listFinancialClients(),
       listAllBillings(),
       listPayables().catch(() => []),
+      listManualReceivables().catch(() => []),
     ]);
 
     const openBillings = billings.filter((b) => !b.paid);
     const openSetups = clients.filter((c) => !c.setup_paid);
     const openPayables = payables.filter((p) => p.status === "pending");
+    openManualReceivables = manualReceivables.filter((r) => r.status === "pending");
 
     // "Previsto" é só o que já está ou fica em aberto neste mês (vencido ou
     // vencendo agora) — ciclos futuros gerados com antecedência (ver
@@ -101,7 +106,10 @@ export default async function CaixaPage({
       openBillings.filter((b) => dueByMonthEnd(b.due_date)).reduce((s, b) => s + calcBillingTotal(b).total_value, 0) +
       openSetups
         .filter((c) => dueByMonthEnd(c.setup_due_date ?? c.first_billing_date))
-        .reduce((s, c) => s + Number(c.setup_value), 0);
+        .reduce((s, c) => s + Number(c.setup_value), 0) +
+      openManualReceivables
+        .filter((r) => dueByMonthEnd(r.due_date))
+        .reduce((s, r) => s + Number(r.amount), 0);
     previstoPagar = openPayables
       .filter((p) => dueByMonthEnd(p.due_date))
       .reduce((s, p) => s + remainingAmount(p), 0);
@@ -112,7 +120,10 @@ export default async function CaixaPage({
         openBillings.filter((b) => within(b.due_date, days)).reduce((s, b) => s + calcBillingTotal(b).total_value, 0) +
         openSetups
           .filter((c) => within(c.setup_due_date ?? c.first_billing_date, days))
-          .reduce((s, c) => s + Number(c.setup_value), 0);
+          .reduce((s, c) => s + Number(c.setup_value), 0) +
+        openManualReceivables
+          .filter((r) => within(r.due_date, days))
+          .reduce((s, r) => s + Number(r.amount), 0);
       target.pagar = openPayables
         .filter((p) => within(p.due_date, days))
         .reduce((s, p) => s + remainingAmount(p), 0);
@@ -124,7 +135,10 @@ export default async function CaixaPage({
         openBillings.filter((b) => upTo(b.due_date)).reduce((s, b) => s + calcBillingTotal(b).total_value, 0) +
         openSetups
           .filter((c) => upTo(c.setup_due_date ?? c.first_billing_date))
-          .reduce((s, c) => s + Number(c.setup_value), 0);
+          .reduce((s, c) => s + Number(c.setup_value), 0) +
+        openManualReceivables
+          .filter((r) => upTo(r.due_date))
+          .reduce((s, r) => s + Number(r.amount), 0);
       projCustom.pagar = openPayables
         .filter((p) => upTo(p.due_date))
         .reduce((s, p) => s + remainingAmount(p), 0);
@@ -465,6 +479,10 @@ export default async function CaixaPage({
           </div>
           <BalanceChart series={chartSeries} />
         </section>
+
+        <ManualReceivablesList
+          items={[...openManualReceivables].sort((a, b) => a.due_date.localeCompare(b.due_date))}
+        />
 
         <div className="space-y-3">
           <ManualIncomeForm />
