@@ -3,6 +3,7 @@ import {
   BellRinging,
   CaretDown,
   ChartLineUp,
+  Megaphone,
   Plus,
   Rows,
   SquaresFour,
@@ -72,9 +73,10 @@ export default async function FinanceiroPage({
     segment?: string;
     view?: string;
     inactive?: string;
+    meta?: string;
   }>;
 }) {
-  const { status, q, ref, segment, view: viewParam, inactive } = await searchParams;
+  const { status, q, ref, segment, view: viewParam, inactive, meta } = await searchParams;
   // "lista" é o padrão e não vai na URL; "matriz" = clientes x meses.
   const view: "lista" | "matriz" = viewParam === "matriz" ? "matriz" : "lista";
   const activeFilter: StatusFilter = VALID_FILTERS.includes(status as StatusFilter)
@@ -83,6 +85,7 @@ export default async function FinanceiroPage({
   const search = q ?? "";
   // Cancelado some da visão por padrão — "incluir inativos" é opt-in, não o contrário.
   const showInactive = inactive === "1";
+  const metaOnly = meta === "1";
 
   let clients: FinancialClientRow[] = [];
   let billings: FinancialBillingRow[] = [];
@@ -114,6 +117,7 @@ export default async function FinanceiroPage({
   // "quem eu quero olhar", não um filtro de recorte dentro de quem já vejo.
   const enriched = showInactive ? enrichedAll : enrichedAll.filter((e) => !e.client.canceled_at);
   const inactiveCount = enrichedAll.length - enrichedAll.filter((e) => !e.client.canceled_at).length;
+  const metaCount = enriched.filter((e) => e.client.bill_meta).length;
 
   // Referências (meses de cobrança) disponíveis pro filtro — união de todas as
   // cobranças já geradas, mais recente primeiro.
@@ -152,7 +156,8 @@ export default async function FinanceiroPage({
       matchesFilter(e.status, activeFilter) &&
       (needle === "" || normalize(e.client.name).includes(needle)) &&
       (activeRef === "" || e.billings.some((b) => b.due_date.slice(0, 7) === activeRef)) &&
-      (activeSegment === "" || e.client.segment === activeSegment)
+      (activeSegment === "" || e.client.segment === activeSegment) &&
+      (!metaOnly || e.client.bill_meta)
   );
 
   // Ordena por urgência; dentro de cada faixa, alfabético.
@@ -171,6 +176,7 @@ export default async function FinanceiroPage({
     if (activeSegment) params.set("segment", activeSegment);
     if (view === "matriz") params.set("view", "matriz");
     if (showInactive) params.set("inactive", "1");
+    if (metaOnly) params.set("meta", "1");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
@@ -184,6 +190,7 @@ export default async function FinanceiroPage({
     if (activeSegment) params.set("segment", activeSegment);
     if (target === "matriz") params.set("view", "matriz");
     if (showInactive) params.set("inactive", "1");
+    if (metaOnly) params.set("meta", "1");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
@@ -197,6 +204,21 @@ export default async function FinanceiroPage({
     if (activeSegment) params.set("segment", activeSegment);
     if (view === "matriz") params.set("view", "matriz");
     if (!showInactive) params.set("inactive", "1");
+    if (metaOnly) params.set("meta", "1");
+    const query = params.toString();
+    return query ? `/financeiro?${query}` : "/financeiro";
+  };
+
+  /** Link que liga/desliga "só com repasse Meta" mantendo os outros filtros. */
+  const metaToggleHref = () => {
+    const params = new URLSearchParams();
+    if (activeFilter) params.set("status", activeFilter);
+    if (search) params.set("q", search);
+    if (activeRef) params.set("ref", activeRef);
+    if (activeSegment) params.set("segment", activeSegment);
+    if (view === "matriz") params.set("view", "matriz");
+    if (showInactive) params.set("inactive", "1");
+    if (!metaOnly) params.set("meta", "1");
     const query = params.toString();
     return query ? `/financeiro?${query}` : "/financeiro";
   };
@@ -292,8 +314,24 @@ export default async function FinanceiroPage({
             segment={activeSegment}
             view={view === "matriz" ? "matriz" : undefined}
             inactive={showInactive}
+            metaOnly={metaOnly}
           />
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {metaCount > 0 && (
+              <Link
+                href={metaToggleHref()}
+                aria-pressed={metaOnly}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                  metaOnly ? "bg-strong text-on-strong" : "bg-card text-muted shadow-card hover:text-ink"
+                }`}
+              >
+                <Megaphone size={16} weight={metaOnly ? "fill" : "regular"} aria-hidden="true" />
+                Só com Meta
+                <span className={`tabular-nums ${metaOnly ? "opacity-80" : "text-secondary-ink"}`}>
+                  {metaCount}
+                </span>
+              </Link>
+            )}
             {inactiveCount > 0 && (
               <Link
                 href={inactiveToggleHref()}
