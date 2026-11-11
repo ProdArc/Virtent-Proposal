@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { updateClientAction, type FormActionState } from "./actions";
 import type { FinancialClientRow } from "@/lib/financial";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
@@ -36,6 +36,29 @@ export function EditClientForm({
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(updateClientAction, initialState);
+  const applyDueDayRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Mudar o dia de vencimento só afeta ciclos gerados DEPOIS (ver
+   * ensureCurrentBilling) — sem isso, cobrança já gerada pro mês que vem fica
+   * "errada" até o usuário editá-la na mão. Pergunta ANTES de salvar: se
+   * confirmar, o servidor também re-data as cobranças abertas (não pagas) pro
+   * novo dia, mantendo mês/ano de cada uma.
+   */
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const select = e.currentTarget.elements.namedItem("dueDay") as HTMLSelectElement | null;
+    const flag = applyDueDayRef.current;
+    if (!select || !flag) return;
+
+    const changed = Number(select.value) !== client.due_day;
+    flag.value =
+      changed &&
+      window.confirm(
+        "O dia de vencimento mudou. Atualizar também o vencimento das mensalidades e repasses Meta ainda não pagos para o novo dia?"
+      )
+        ? "on"
+        : "";
+  }
 
   if (!open) {
     return (
@@ -52,9 +75,11 @@ export function EditClientForm({
   return (
     <form
       action={formAction}
+      onSubmit={handleSubmit}
       className="mt-3 rounded-3xl bg-card p-5 shadow-card sm:p-6"
     >
       <input type="hidden" name="id" value={client.id} />
+      <input type="hidden" name="applyDueDayToOpenBillings" ref={applyDueDayRef} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div className="sm:col-span-2">
           <label className="block text-xs font-semibold text-muted mb-1.5">

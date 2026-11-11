@@ -23,6 +23,7 @@ import {
   updateBillingPixLink,
   updateBillingRevenue,
   updateFinancialClient,
+  updateOpenBillingsDueDay,
   updateSetupPixLink,
   uploadBillingComprovante,
   uploadBillingNfe,
@@ -56,6 +57,7 @@ export async function updateClientAction(
   const setupDueDate = String(formData.get("setupDueDate") || "").trim();
   const dueDayRaw = String(formData.get("dueDay") || "").trim();
   const firstBillingDate = String(formData.get("firstBillingDate") || "").trim();
+  const applyDueDayToOpenBillings = formData.get("applyDueDayToOpenBillings") === "on";
 
   if (!id || !name || !setupValueRaw || !dueDayRaw || !firstBillingDate) {
     return { error: "Preencha todos os campos obrigatórios." };
@@ -89,6 +91,9 @@ export async function updateClientAction(
       segment: segment || null,
       ...methods.data,
     });
+    if (applyDueDayToOpenBillings) {
+      await updateOpenBillingsDueDay(id, dueDay);
+    }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao atualizar cliente." };
   }

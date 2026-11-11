@@ -420,6 +420,42 @@ export async function updateFinancialClient(
 }
 
 /**
+ * Re-data pro novo dia as cobranças ainda NÃO pagas (mensalidade e repasse
+ * Meta), mantendo o mês/ano de cada uma — só o dia do mês muda. Opt-in:
+ * mudar o dia de vencimento do cliente só afeta ciclos gerados dali pra
+ * frente (ver `ensureCurrentBilling`); isso aqui é o que corrige os que já
+ * foram gerados com o dia antigo, quando o usuário confirma que quer isso.
+ * Cobrança paga nunca é tocada — já é histórico.
+ */
+export async function updateOpenBillingsDueDay(clientId: string, dueDay: number): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { data: rows, error: selectError } = await supabase
+    .from("financial_billings")
+    .select("id, due_date")
+    .eq("client_id", clientId)
+    .eq("paid", false);
+
+  if (selectError) {
+    throw new Error(`Falha ao buscar cobranças em aberto: ${selectError.message}`);
+  }
+
+  const day = Math.min(Math.max(dueDay, 1), 28);
+  for (const row of rows ?? []) {
+    const [year, month] = row.due_date.split("-").map(Number);
+    const newDueDate = new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10);
+    if (newDueDate === row.due_date) continue;
+
+    const { error } = await supabase
+      .from("financial_billings")
+      .update({ due_date: newDueDate, updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+    if (error) {
+      throw new Error(`Falha ao atualizar vencimento da cobrança: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Cancela (ou reativa) um cliente. Diferente de excluir: o histórico de
  * cobranças e o saldo de caixa continuam intactos, e cobranças já em aberto
  * seguem cobráveis normalmente — só para a geração automática (e a manual,
