@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 /**
- * Busca por nome. Filtra no servidor via query string (URL compartilhável),
- * com debounce pra não disparar um render por tecla digitada.
+ * Busca por nome ou por dígitos do CNPJ (qualquer trecho, não só o início) —
+ * útil pra achar quem fez um PIX só com os primeiros/últimos dígitos
+ * visíveis no extrato. Filtra no servidor via query string (URL
+ * compartilhável), com debounce pra não disparar um render por tecla digitada.
  */
 export function SearchInput({ initialValue }: { initialValue: string }) {
   const router = useRouter();
@@ -42,8 +44,8 @@ export function SearchInput({ initialValue }: { initialValue: string }) {
       <input
         type="search"
         value={value}
-        placeholder="Buscar cliente pelo nome"
-        aria-label="Buscar cliente pelo nome"
+        placeholder="Buscar por nome ou CNPJ"
+        aria-label="Buscar cliente pelo nome ou CNPJ"
         onChange={(e) => {
           const next = e.target.value;
           setValue(next);

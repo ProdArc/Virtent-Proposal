@@ -6,6 +6,7 @@ import { StatusBadge, MailIcon } from "./StatusBadge";
 import { MonthTimeline, MonthTimelineLegend } from "./MonthTimeline";
 import { ClientCheckbox } from "./ClientCheckbox";
 import { billingMethodTags, type BillingMethodTag } from "@/lib/billing-methods";
+import { formatCnpj } from "@/lib/cnpj";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -104,6 +105,9 @@ export function ClientCard({
             className={`mt-0.5 line-clamp-2 text-[12.5px] font-medium leading-snug sm:line-clamp-1 ${ACTION_CLASS[status.action.tone]}`}
           >
             {status.action.label}
+            {client.cnpj && (
+              <span className="text-subtle"> · CNPJ {formatCnpj(client.cnpj)}</span>
+            )}
           </span>
         </span>
 

@@ -18,6 +18,7 @@ import {
   type FinancialBillingRow,
   type FinancialClientRow,
 } from "@/lib/financial";
+import { cnpjDigits } from "@/lib/cnpj";
 import {
   clientStatus,
   matchesFilter,
@@ -151,10 +152,16 @@ export default async function FinanceiroPage({
   ) as Record<StatusFilter, number>;
 
   const needle = normalize(search);
+  // Dígitos da busca — dá pra achar um cliente só pelo final do CNPJ (é o que
+  // o PIX recebido mostra: só os 2 primeiros e 2 últimos dígitos). Vazio
+  // quando a busca não tem nenhum dígito, pra não "achar" todo mundo sem CNPJ.
+  const needleDigits = search.replace(/\D/g, "");
   const visible = enriched.filter(
     (e) =>
       matchesFilter(e.status, activeFilter) &&
-      (needle === "" || normalize(e.client.name).includes(needle)) &&
+      (needle === "" ||
+        normalize(e.client.name).includes(needle) ||
+        (needleDigits !== "" && cnpjDigits(e.client.cnpj ?? "").includes(needleDigits))) &&
       (activeRef === "" || e.billings.some((b) => b.due_date.slice(0, 7) === activeRef)) &&
       (activeSegment === "" || e.client.segment === activeSegment) &&
       (!metaOnly || e.client.bill_meta)
