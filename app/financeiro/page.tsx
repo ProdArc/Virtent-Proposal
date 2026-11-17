@@ -312,7 +312,7 @@ export default async function FinanceiroPage({
             />
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <StatusChips
             active={activeFilter}
             counts={counts}
@@ -323,12 +323,17 @@ export default async function FinanceiroPage({
             inactive={showInactive}
             metaOnly={metaOnly}
           />
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* Linha própria (não ao lado dos chips): no celular, lado a lado com
+              justify-between quebrava feio — 2 toggles + o switcher de view não
+              cabem na largura junto dos chips, e o flex-wrap empurrava tudo pra
+              linhas desalinhadas. Vira seu próprio scroll horizontal, igual aos
+              chips, e só fica lado a lado a partir de lg. */}
+          <div className="fin-scroll-x -mx-4 flex shrink-0 items-center gap-2 px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0 lg:justify-end">
             {metaCount > 0 && (
               <Link
                 href={metaToggleHref()}
                 aria-pressed={metaOnly}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
                   metaOnly ? "bg-strong text-on-strong" : "bg-card text-muted shadow-card hover:text-ink"
                 }`}
               >
@@ -343,7 +348,7 @@ export default async function FinanceiroPage({
               <Link
                 href={inactiveToggleHref()}
                 aria-pressed={showInactive}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
                   showInactive ? "bg-strong text-on-strong" : "bg-card text-muted shadow-card hover:text-ink"
                 }`}
               >
@@ -361,7 +366,7 @@ export default async function FinanceiroPage({
             <div
               role="group"
               aria-label="Modo de exibição"
-              className="inline-flex rounded-full bg-card p-1 shadow-card"
+              className="inline-flex shrink-0 rounded-full bg-card p-1 shadow-card"
             >
               {(
                 [
@@ -373,7 +378,7 @@ export default async function FinanceiroPage({
                   key={key}
                   href={viewHref(key)}
                   aria-current={view === key ? "true" : undefined}
-                  className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                  className={`inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
                     view === key ? "bg-strong text-on-strong" : "text-muted hover:text-ink"
                   }`}
                 >
